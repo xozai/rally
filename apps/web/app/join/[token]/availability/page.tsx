@@ -138,6 +138,15 @@ export default function AvailabilityPage({ params }: { params: { token: string }
               </Card>
             </section>
 
+            {/* #31 — show event timezone */}
+            {(participant.event.constraints as { timezone?: string }).timezone ? (
+              <div className="rounded-md border border-border bg-muted/50 px-4 py-2 text-sm">
+                <span className="font-medium">Event timezone: </span>
+                <span className="text-muted-foreground">{(participant.event.constraints as { timezone?: string }).timezone}</span>
+                <span className="ml-2 text-xs text-muted-foreground">(All times shown in this timezone)</span>
+              </div>
+            ) : null}
+
             {manualOpen ? (
               <Card className="space-y-5">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

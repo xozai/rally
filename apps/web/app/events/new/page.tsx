@@ -26,6 +26,7 @@ interface EventConstraintsInput {
   customStart?: string;
   customEnd?: string;
   excludeDates: string[];
+  timezone?: string;
 }
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -60,7 +61,8 @@ export default function NewEventPage() {
     nDays: 30,
     daysOfWeek: days.map((day) => day.value),
     timeOfDay: "morning",
-    excludeDates: []
+    excludeDates: [],
+    timezone: typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : "UTC"
   });
   const [email, setEmail] = React.useState("");
   const [invitees, setInvitees] = React.useState<string[]>([]);
@@ -231,6 +233,16 @@ export default function NewEventPage() {
                   ))}
                 </div>
               ) : null}
+            </Field>
+
+            <Field label="Timezone">
+              <Input
+                type="text"
+                value={constraints.timezone ?? ""}
+                onChange={(event) => updateConstraints({ timezone: event.target.value })}
+                placeholder="e.g. America/Los_Angeles"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">IANA timezone (e.g. America/New_York, Europe/London). Defaults to your browser timezone.</p>
             </Field>
 
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">

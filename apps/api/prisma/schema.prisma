@@ -46,6 +46,7 @@ model Participant {
   availability Json
   preferences  Json
   responded    Boolean  @default(false)
+  rsvp         String?
   createdAt    DateTime @default(now())
 }
 

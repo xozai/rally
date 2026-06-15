@@ -73,6 +73,9 @@ export default function EventPage() {
   const [live, setLive] = React.useState(false);
   const [selectedSuggestion, setSelectedSuggestion] = React.useState<SuggestionResponse | null>(null);
   const [sendInvites, setSendInvites] = React.useState(true);
+  const [inviteEmail, setInviteEmail] = React.useState("");
+  const [inviteName, setInviteName] = React.useState("");
+  const [inviteSuccess, setInviteSuccess] = React.useState<string | null>(null);
 
   const eventQuery = useQuery({
     queryKey: ["event", params.id],
@@ -106,6 +109,25 @@ export default function EventPage() {
     onSuccess: async () => {
       setSelectedSuggestion(null);
       await queryClient.invalidateQueries({ queryKey: ["event", params.id] });
+    }
+  });
+
+  const inviteMoreMutation = useMutation({
+    mutationFn: async ({ email, name }: { email: string; name?: string }) => {
+      const response = await fetch(`${apiBaseUrl}/api/events/${params.id}/participants`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name: name || undefined })
+      });
+      if (!response.ok) throw new Error(await readError(response));
+    },
+    onSuccess: async () => {
+      setInviteSuccess(`Invite sent to ${inviteEmail}`);
+      setInviteEmail("");
+      setInviteName("");
+      await queryClient.invalidateQueries({ queryKey: ["event", params.id] });
+      window.setTimeout(() => setInviteSuccess(null), 4000);
     }
   });
 
@@ -252,6 +274,42 @@ export default function EventPage() {
                 </div>
               </Card>
             </div>
+
+            {/* #32 — Invite more people */}
+            <Card className="space-y-4">
+              <div>
+                <h2 className="text-lg font-semibold">Invite more people</h2>
+                <p className="text-sm text-muted-foreground">Send an invite link to additional participants.</p>
+              </div>
+              {inviteMoreMutation.error ? (
+                <p className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{inviteMoreMutation.error.message}</p>
+              ) : null}
+              {inviteSuccess ? (
+                <p className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">{inviteSuccess}</p>
+              ) : null}
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <input
+                  type="email"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  placeholder="friend@example.com"
+                  className="h-10 min-w-0 flex-1 rounded-md border border-border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <input
+                  type="text"
+                  value={inviteName}
+                  onChange={(e) => setInviteName(e.target.value)}
+                  placeholder="Name (optional)"
+                  className="h-10 min-w-0 w-40 rounded-md border border-border px-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <Button
+                  disabled={!inviteEmail.trim() || inviteMoreMutation.isPending}
+                  onClick={() => inviteMoreMutation.mutate({ email: inviteEmail.trim(), name: inviteName.trim() || undefined })}
+                >
+                  Send invite
+                </Button>
+              </div>
+            </Card>
           </div>
         ) : null}
       </div>

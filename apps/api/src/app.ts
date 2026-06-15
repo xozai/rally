@@ -4,6 +4,7 @@ import rateLimit from "@fastify/rate-limit";
 import Fastify from "fastify";
 import { env } from "./env";
 import { setupRealtime } from "./realtime";
+import { setupWorker } from "./jobs/queues";
 import { authRoutes } from "./routes/auth";
 import { calendarRoutes } from "./routes/calendar";
 import { eventRoutes } from "./routes/events";
@@ -28,6 +29,9 @@ export async function buildApp() {
   await app.register(participantRoutes);
   await app.register(calendarRoutes);
   await app.register(suggestionRoutes);
+
+  // Start the BullMQ worker that processes suggestion-recompute jobs (#10)
+  setupWorker();
 
   return app;
 }

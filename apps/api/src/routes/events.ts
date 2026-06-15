@@ -3,6 +3,7 @@ import type { Prisma } from "@prisma/client";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireUser } from "../auth/require-user";
+import { getSession } from "../auth/session";
 import { env } from "../env";
 import { prisma } from "../lib/prisma";
 import { sendEventConfirmedEmail, sendInviteEmail, sendVotingOpenEmail } from "../lib/resend";
@@ -26,7 +27,8 @@ const eventInputSchema = z.object({
     timeOfDay: z.enum(["morning", "afternoon", "evening", "custom"]).optional(),
     customStart: timeStringSchema.optional(),
     customEnd: timeStringSchema.optional(),
-    excludeDates: z.array(dateStringSchema).optional()
+    excludeDates: z.array(dateStringSchema).optional(),
+    timezone: z.string().regex(/^[A-Za-z]+\/[A-Za-z_]+$/).optional()
   })
 });
 
@@ -106,6 +108,12 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!event) return reply.code(404).send({ error: "Event not found" });
+
+    // #30 — enforce event expiry
+    if (event.expiresAt && event.expiresAt < new Date()) {
+      return reply.code(410).send({ error: "This Rally has expired" });
+    }
+
     return reply.send({ event: serializeOrganizerEvent(event) });
   });
 
@@ -113,9 +121,29 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     const parsedParams = z.object({ id: z.string() }).safeParse(request.params);
     if (!parsedParams.success) return reply.code(400).send({ error: "Invalid event id" });
 
-    const event = await prisma.event.findUnique({ where: { id: parsedParams.data.id } });
-    if (!event || event.status !== "CONFIRMED" || !event.finalSlot) {
+    const event = await prisma.event.findUnique({
+      where: { id: parsedParams.data.id },
+      include: { participants: { select: { token: true } } }
+    });
+    if (!event || event.status !== "CONFIRMED") {
       return reply.code(404).send({ error: "Confirmed event not found" });
+    }
+
+    // #15 — proper null guard for finalSlot (typed as Date | null)
+    if (!event.finalSlot) {
+      return reply.code(400).send({ error: "Event has no confirmed time slot" });
+    }
+
+    // #16 — require auth: either session owner OR valid participant token
+    const query = z.object({ token: z.string().optional() }).parse(request.query);
+    const session = await getSession(request);
+    const isOrganizer = session?.userId === event.organizerId;
+    const isValidParticipant = query.token
+      ? event.participants.some((p: { token: string }) => p.token === query.token)
+      : false;
+
+    if (!isOrganizer && !isValidParticipant) {
+      return reply.code(401).send({ error: "Authentication required" });
     }
 
     const start = event.finalSlot;
