@@ -2,7 +2,7 @@ import type { Prisma } from "@prisma/client";
 import type { PreferenceBlock, TimeInterval } from "@rally/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { suggestionRecomputeQueue } from "../jobs/queues";
+import { enqueueRecompute } from "../jobs/queues";
 import { prisma } from "../lib/prisma";
 import { broadcast } from "../realtime";
 
@@ -39,6 +39,8 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
             duration: true,
             constraints: true,
             status: true,
+            finalSlot: true,
+            participants: { select: { responded: true } },
             organizer: { select: { name: true, email: true } }
           }
         }
@@ -145,6 +147,8 @@ type GuestParticipantRecord = ParticipantRecord & {
     duration: number;
     constraints: Prisma.JsonValue;
     status: string;
+    finalSlot: Date | null;
+    participants: Array<{ responded: boolean }>;
     organizer: { name: string | null; email: string };
   };
 };
@@ -166,6 +170,9 @@ function serializeGuestParticipant(participant: GuestParticipantRecord) {
       duration: participant.event.duration,
       constraints: participant.event.constraints,
       status: participant.event.status,
+      finalSlot: participant.event.finalSlot?.toISOString() ?? null,
+      responseCount: participant.event.participants.filter((item) => item.responded).length,
+      participantCount: participant.event.participants.length,
       organizerName: participant.event.organizer.name ?? participant.event.organizer.email
     }
   };
@@ -198,5 +205,6 @@ function jsonArray<T>(value: Prisma.JsonValue): T[] {
 }
 
 async function enqueueSuggestionRecompute(eventId: string, source: "manual" | "google" | "outlook"): Promise<void> {
-  await suggestionRecomputeQueue?.add("recompute", { eventId, source });
+  void source;
+  await enqueueRecompute(eventId);
 }

@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { Resend } from "resend";
 import { z } from "zod";
+import { requireUser } from "../auth/require-user";
 import { env } from "../env";
 import { encryptJson } from "../lib/crypto";
 import { prisma } from "../lib/prisma";
@@ -13,6 +14,15 @@ const emailSchema = z.object({
 const googleProfileSchema = z.object({
   email: z.string().email(),
   name: z.string().optional()
+});
+
+const oauthQuerySchema = z.object({
+  token: z.string().optional()
+});
+
+const stateSchema = z.object({
+  userId: z.string(),
+  token: z.string().optional()
 });
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
@@ -119,12 +129,118 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     return reply.redirect(`${env.WEB_URL}/dashboard`);
   });
 
-  app.get("/api/auth/microsoft", async (_request, reply) => {
-    return reply.code(501).send({ error: "Microsoft OAuth is reserved for Phase 2 calendar integration" });
+  app.get("/api/auth/google/calendar-connect", async (request, reply) => {
+    const session = await requireUser(request, reply);
+    if (!session) return;
+
+    if (!env.GOOGLE_CLIENT_ID) {
+      return reply.code(500).send({ error: "Google OAuth is not configured" });
+    }
+
+    const query = oauthQuerySchema.parse(request.query);
+    const url = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    url.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
+    url.searchParams.set("redirect_uri", googleCalendarRedirectUri());
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid email profile https://www.googleapis.com/auth/calendar.readonly");
+    url.searchParams.set("access_type", "offline");
+    url.searchParams.set("prompt", "consent");
+    url.searchParams.set("state", encodeOAuthState({ userId: session.userId, token: query.token }));
+
+    return reply.redirect(url.toString());
   });
 
-  app.get("/api/auth/microsoft/callback", async (_request, reply) => {
-    return reply.code(501).send({ error: "Microsoft OAuth is reserved for Phase 2 calendar integration" });
+  app.get("/api/auth/google/calendar-callback", async (request, reply) => {
+    const { code, state } = z.object({ code: z.string().min(1), state: z.string().min(1) }).parse(request.query);
+    const parsedState = decodeOAuthState(state);
+
+    if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) {
+      return reply.code(500).send({ error: "Google OAuth is not configured" });
+    }
+
+    const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: env.GOOGLE_CLIENT_ID,
+        client_secret: env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: googleCalendarRedirectUri(),
+        grant_type: "authorization_code"
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      request.log.error(await tokenResponse.text(), "Google calendar token exchange failed");
+      return reply.code(400).send({ error: "Google token exchange failed" });
+    }
+
+    const tokens = await tokenResponse.json();
+    await prisma.user.update({
+      where: { id: parsedState.userId },
+      data: { googleToken: encryptJson(tokens) }
+    });
+
+    return reply.redirect(calendarRedirectTarget(parsedState.token, "google"));
+  });
+
+  app.get("/api/auth/microsoft", async (_request, reply) => {
+    return reply.code(400).send({ error: "Use /api/auth/microsoft/connect to connect a calendar" });
+  });
+
+  app.get("/api/auth/microsoft/connect", async (request, reply) => {
+    const session = await requireUser(request, reply);
+    if (!session) return;
+
+    if (!env.MICROSOFT_CLIENT_ID) {
+      return reply.code(500).send({ error: "Microsoft OAuth is not configured" });
+    }
+
+    const query = oauthQuerySchema.parse(request.query);
+    const url = new URL("https://login.microsoftonline.com/common/oauth2/v2.0/authorize");
+    url.searchParams.set("client_id", env.MICROSOFT_CLIENT_ID);
+    url.searchParams.set("redirect_uri", microsoftRedirectUri());
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("scope", "openid email profile Calendars.Read offline_access");
+    url.searchParams.set("response_mode", "query");
+    url.searchParams.set("state", encodeOAuthState({ userId: session.userId, token: query.token }));
+
+    return reply.redirect(url.toString());
+  });
+
+  app.get("/api/auth/microsoft/callback", async (request, reply) => {
+    const { code, state } = z.object({ code: z.string().min(1), state: z.string().min(1) }).parse(request.query);
+    const parsedState = decodeOAuthState(state);
+
+    if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CLIENT_SECRET) {
+      return reply.code(500).send({ error: "Microsoft OAuth is not configured" });
+    }
+
+    const tokenResponse = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: env.MICROSOFT_CLIENT_ID,
+        client_secret: env.MICROSOFT_CLIENT_SECRET,
+        redirect_uri: microsoftRedirectUri(),
+        grant_type: "authorization_code",
+        scope: "openid email profile Calendars.Read offline_access"
+      })
+    });
+
+    if (!tokenResponse.ok) {
+      request.log.error(await tokenResponse.text(), "Microsoft token exchange failed");
+      return reply.code(400).send({ error: "Microsoft token exchange failed" });
+    }
+
+    const tokens = await tokenResponse.json();
+    await prisma.user.update({
+      where: { id: parsedState.userId },
+      data: { outlookToken: encryptJson(tokens) }
+    });
+
+    return reply.redirect(calendarRedirectTarget(parsedState.token, "outlook"));
   });
 
   app.get("/api/auth/session", async (request, reply) => {
@@ -144,4 +260,28 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     clearSessionCookie(reply);
     return reply.send({ ok: true });
   });
+}
+
+function encodeOAuthState(state: z.infer<typeof stateSchema>): string {
+  return Buffer.from(JSON.stringify(state), "utf8").toString("base64url");
+}
+
+function decodeOAuthState(value: string): z.infer<typeof stateSchema> {
+  return stateSchema.parse(JSON.parse(Buffer.from(value, "base64url").toString("utf8")));
+}
+
+function googleCalendarRedirectUri(): string {
+  return new URL("/api/auth/google/calendar-callback", env.API_URL).toString();
+}
+
+function microsoftRedirectUri(): string {
+  return env.MICROSOFT_REDIRECT_URI ?? new URL("/api/auth/microsoft/callback", env.API_URL).toString();
+}
+
+function calendarRedirectTarget(token?: string, provider?: "google" | "outlook"): string {
+  if (!token) return `${env.WEB_URL}/dashboard`;
+  const url = new URL(`/join/${token}/availability`, env.WEB_URL);
+  url.searchParams.set("calendarConnected", "true");
+  if (provider) url.searchParams.set("provider", provider);
+  return url.toString();
 }

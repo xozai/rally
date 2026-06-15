@@ -14,7 +14,10 @@ const envSchema = z.object({
   RESEND_FROM: z.string().default("Rally <hello@example.com>"),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
-  GOOGLE_REDIRECT_URI: z.string().url().optional()
+  GOOGLE_REDIRECT_URI: z.string().url().optional(),
+  MICROSOFT_CLIENT_ID: z.string().optional(),
+  MICROSOFT_CLIENT_SECRET: z.string().optional(),
+  MICROSOFT_REDIRECT_URI: z.string().url().optional()
 });
 
 export const env = envSchema.parse(process.env);

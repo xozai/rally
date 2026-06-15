@@ -108,6 +108,37 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ event: serializeOrganizerEvent(event) });
   });
 
+  app.get("/api/events/:id/ics", async (request, reply) => {
+    const parsedParams = z.object({ id: z.string() }).safeParse(request.params);
+    if (!parsedParams.success) return reply.code(400).send({ error: "Invalid event id" });
+
+    const event = await prisma.event.findUnique({ where: { id: parsedParams.data.id } });
+    if (!event || event.status !== "CONFIRMED" || !event.finalSlot) {
+      return reply.code(404).send({ error: "Confirmed event not found" });
+    }
+
+    const start = event.finalSlot;
+    const end = new Date(start.getTime() + event.duration * 60_000);
+    const ics = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Rally//Rally//EN",
+      "BEGIN:VEVENT",
+      `UID:${event.id}@rally.app`,
+      `DTSTAMP:${formatIcalDate(new Date())}`,
+      `DTSTART:${formatIcalDate(start)}`,
+      `DTEND:${formatIcalDate(end)}`,
+      `SUMMARY:${escapeIcalText(event.title)}`,
+      `DESCRIPTION:${escapeIcalText(event.description ?? "")}`,
+      "END:VEVENT",
+      "END:VCALENDAR"
+    ].join("\r\n");
+
+    reply.header("Content-Type", "text/calendar; charset=utf-8");
+    reply.header("Content-Disposition", `attachment; filename="rally-${event.id}.ics"`);
+    return reply.send(ics);
+  });
+
   app.patch("/api/events/:id/confirm", async (request, reply) => {
     const session = await requireUser(request, reply);
     if (!session) return;
@@ -320,4 +351,16 @@ function redactParticipant(participant: PrivateParticipantRecord) {
     responded: participant.responded,
     createdAt: participant.createdAt.toISOString()
   };
+}
+
+function formatIcalDate(date: Date): string {
+  return date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+}
+
+function escapeIcalText(value: string): string {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
 }
