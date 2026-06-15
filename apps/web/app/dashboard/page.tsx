@@ -26,12 +26,12 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-5xl">
-        <header className="flex items-center justify-between gap-4">
+        <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm text-muted-foreground">Your events</p>
             <h1 className="text-3xl font-semibold">Dashboard</h1>
           </div>
-          <Link href="/events/new" className="inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+          <Link href="/events/new" className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
             <CalendarPlus className="h-4 w-4" />
             Create New Rally
           </Link>
@@ -46,7 +46,7 @@ export default function DashboardPage() {
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
               Create your first event to invite friends, collect availability, and see ranked time suggestions.
             </p>
-            <Link href="/events/new" className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+            <Link href="/events/new" className="mt-5 inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
               <CalendarPlus className="h-4 w-4" />
               Create New Rally
             </Link>
@@ -54,12 +54,12 @@ export default function DashboardPage() {
         ) : null}
 
         {data && data.events.length > 0 ? (
-          <section className="mt-8 grid gap-4 sm:grid-cols-2">
+          <section className="mt-8 grid gap-4 md:grid-cols-2">
             {data.events.map((event) => (
               <Link key={event.id} href={`/events/${event.id}`}>
                 <Card className="h-full transition-colors hover:bg-muted/60">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
                       <h2 className="text-lg font-semibold">{event.title}</h2>
                       <p className="mt-1 text-sm text-muted-foreground">Created {formatDate(event.createdAt)}</p>
                     </div>

@@ -162,7 +162,7 @@ export default function EventPage() {
               </div>
               <Card className="w-full sm:w-72">
                 <p className="text-sm font-medium">Shareable invite link</p>
-                <div className="mt-2 flex gap-2">
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row">
                   <input readOnly value={shareUrl} className="h-9 min-w-0 flex-1 rounded-md border border-border px-2 text-xs" />
                   <Button variant="secondary" className="h-9 px-3" onClick={async () => {
                     await navigator.clipboard.writeText(shareUrl);
@@ -205,7 +205,7 @@ export default function EventPage() {
               </Card>
 
               <Card>
-                <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h2 className="text-lg font-semibold">Suggestions</h2>
                     <p className="text-sm text-muted-foreground">Ranked slots refresh live with polling as fallback.</p>
@@ -221,7 +221,7 @@ export default function EventPage() {
                     const maxScore = Math.max(...event.suggestions.map((item) => item.score), 1);
                     return (
                       <div key={suggestion.id} className="rounded-lg border border-border p-4">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div>
                             <Badge className={suggestion.rank === 1 ? "border-primary/30 bg-primary/10 text-primary" : undefined}>
                               {suggestion.rank === 1 ? "#1 Best Match" : `#${suggestion.rank}`}
@@ -233,7 +233,7 @@ export default function EventPage() {
                               ))}
                             </div>
                           </div>
-                          <div className="text-left sm:text-right">
+                          <div className="text-left md:text-right">
                             <p className="text-sm font-semibold">{suggestion.score.toFixed(1)}</p>
                             <p className="text-xs text-muted-foreground">score</p>
                           </div>
@@ -241,7 +241,7 @@ export default function EventPage() {
                         <Progress className="mt-4" value={(suggestion.score / maxScore) * 100} />
                         {event.status === "VOTING" ? <VoteTally suggestion={suggestion} participantById={participantById} /> : null}
                         {event.status !== "CONFIRMED" ? (
-                          <Button className="mt-4" variant="secondary" onClick={() => setSelectedSuggestion(suggestion)}>
+                          <Button className="mt-4 w-full sm:w-auto" variant="secondary" onClick={() => setSelectedSuggestion(suggestion)}>
                             Confirm This Time
                           </Button>
                         ) : null}
@@ -277,7 +277,7 @@ export default function EventPage() {
               Send calendar invites to all participants?
             </label>
             {confirmMutation.error ? <p className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{confirmMutation.error.message}</p> : null}
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <Button variant="secondary" onClick={() => setSelectedSuggestion(null)}>Cancel</Button>
               <Button disabled={confirmMutation.isPending} onClick={() => confirmMutation.mutate(selectedSuggestion)}>
                 Confirm Time

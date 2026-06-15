@@ -90,7 +90,7 @@ export function AvailabilityGrid({ slots, initialAvailability, onChange, readOnl
       </div>
 
       <div
-        className="overflow-auto rounded-md border border-border bg-white"
+        className="overflow-x-auto overflow-y-hidden rounded-md border border-border bg-white"
         onMouseLeave={() => setDragMode(null)}
         onMouseUp={() => setDragMode(null)}
         onTouchEnd={() => setDragMode(null)}
@@ -132,7 +132,7 @@ export function AvailabilityGrid({ slots, initialAvailability, onChange, readOnl
                       setDragMode(null);
                     }}
                     className={cn(
-                      "relative min-h-10 select-none border-r border-t border-border transition-colors",
+                      "relative min-h-[44px] select-none border-r border-t border-border transition-colors",
                       slot ? "bg-white" : "bg-muted/40",
                       slot && !readOnly ? "cursor-pointer hover:bg-primary/10" : "",
                       isSelected ? "bg-emerald-100 hover:bg-emerald-200" : "",

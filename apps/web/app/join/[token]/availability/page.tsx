@@ -147,9 +147,11 @@ export default function AvailabilityPage({ params }: { params: { token: string }
                   </div>
                   <p className="text-sm font-medium">{availability.length} available blocks selected</p>
                 </div>
-                <AvailabilityGrid slots={slots} initialAvailability={initialAvailability} onChange={handleGridChange} />
+                <div className="overflow-x-auto">
+                  <AvailabilityGrid slots={slots} initialAvailability={initialAvailability} onChange={handleGridChange} />
+                </div>
                 <div className="flex justify-end">
-                  <Button type="button" disabled={submitting || availability.length === 0} onClick={submit}>
+                  <Button type="button" className="w-full sm:w-auto" disabled={submitting || availability.length === 0} onClick={submit}>
                     <CheckCircle2 className="h-4 w-4" />
                     {submitting ? "Saving..." : "Confirm Availability"}
                   </Button>

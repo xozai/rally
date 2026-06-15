@@ -98,28 +98,30 @@ export default function PreferencesPage({ params }: { params: { token: string } 
                 No availability has been submitted yet. Go back and choose the times that work for you.
               </div>
             ) : (
-              <AvailabilityGrid
-                slots={slots}
-                initialAvailability={participant.availability}
-                onChange={noop}
-                readOnly
-                slotClassName={(slot, selected) => selected ? ratingClass(ratingBySlot[slot] ?? "available") : ""}
-                renderSlot={(slot, selected) => selected ? (
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      cycleRating(slot);
-                    }}
-                    className="absolute inset-1 flex items-center justify-center rounded text-[11px] font-medium"
-                  >
-                    {ratingLabel(ratingBySlot[slot] ?? "available")}
-                  </button>
-                ) : null}
-              />
+              <div className="overflow-x-auto">
+                <AvailabilityGrid
+                  slots={slots}
+                  initialAvailability={participant.availability}
+                  onChange={noop}
+                  readOnly
+                  slotClassName={(slot, selected) => selected ? ratingClass(ratingBySlot[slot] ?? "available") : ""}
+                  renderSlot={(slot, selected) => selected ? (
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        cycleRating(slot);
+                      }}
+                      className="absolute inset-1 flex items-center justify-center rounded px-1 text-center text-[10px] font-medium leading-tight sm:text-[11px]"
+                    >
+                      {ratingLabel(ratingBySlot[slot] ?? "available")}
+                    </button>
+                  ) : null}
+                />
+              </div>
             )}
 
-            <div className="flex justify-between gap-3">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
               <Button type="button" variant="secondary" onClick={() => router.push(`/join/${params.token}/availability`)}>Back</Button>
               <Button type="button" disabled={submitting || availableSlots.size === 0} onClick={submit}>
                 <CheckCircle2 className="h-4 w-4" />

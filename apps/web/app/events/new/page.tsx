@@ -127,7 +127,7 @@ export default function NewEventPage() {
   return (
     <main className="min-h-screen px-6 py-8">
       <div className="mx-auto max-w-4xl">
-        <header className="mb-8 flex items-center justify-between gap-4">
+        <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-primary">Step {step} of 3</p>
             <h1 className="text-3xl font-semibold">Create a Rally</h1>
@@ -142,16 +142,18 @@ export default function NewEventPage() {
 
         {step === 1 ? (
           <Card className="space-y-5">
-            <Field label="Event name">
-              <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Dinner, game night, planning session" />
-            </Field>
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="Event name">
+                <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Dinner, game night, planning session" />
+              </Field>
+              <Field label="Duration">
+                <Select value={duration} onChange={(event) => setDuration(Number(event.target.value))}>
+                  {durations.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </Select>
+              </Field>
+            </div>
             <Field label="Description">
               <Textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Add any details people should know." />
-            </Field>
-            <Field label="Duration">
-              <Select value={duration} onChange={(event) => setDuration(Number(event.target.value))}>
-                {durations.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-              </Select>
             </Field>
             <div className="flex justify-end">
               <Button disabled={!title.trim()} onClick={() => setStep(2)}>Next</Button>
@@ -161,7 +163,7 @@ export default function NewEventPage() {
 
         {step === 2 ? (
           <Card className="space-y-6">
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 md:grid-cols-2">
               {windowOptions.map((option) => (
                 <button
                   key={option.value}
@@ -216,7 +218,7 @@ export default function NewEventPage() {
             ) : null}
 
             <Field label="Exclude dates">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input type="date" value={excludeDate} onChange={(event) => setExcludeDate(event.target.value)} />
                 <Button type="button" variant="secondary" onClick={addExcludeDate}>Add</Button>
               </div>
@@ -231,7 +233,7 @@ export default function NewEventPage() {
               ) : null}
             </Field>
 
-            <div className="flex justify-between">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
               <Button variant="secondary" onClick={() => setStep(1)}>Back</Button>
               <Button disabled={constraints.daysOfWeek.length === 0} onClick={() => setStep(3)}>Next</Button>
             </div>
@@ -246,7 +248,7 @@ export default function NewEventPage() {
             </div>
 
             <Field label="Invite people">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); addInvitee(); } }} placeholder="friend@example.com" />
                 <Button type="button" variant="secondary" onClick={addInvitee}><Plus className="h-4 w-4" />Add</Button>
               </div>
@@ -260,7 +262,7 @@ export default function NewEventPage() {
               </div>
             </Field>
 
-            <div className="flex justify-between">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
               <Button variant="secondary" onClick={() => setStep(2)}>Back</Button>
               <Button disabled={submitting || invitees.length === 0} onClick={submit}>
                 <CalendarPlus className="h-4 w-4" />
@@ -297,7 +299,7 @@ function WindowFields({ constraints, updateConstraints }: { constraints: EventCo
 
   if (constraints.windowType === "specific_month") {
     return (
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2">
         <Field label="Month"><Input type="number" min={1} max={12} value={constraints.month ?? new Date().getMonth() + 1} onChange={(event) => updateConstraints({ month: Number(event.target.value) })} /></Field>
         <Field label="Year"><Input type="number" min={2026} value={constraints.year ?? new Date().getFullYear()} onChange={(event) => updateConstraints({ year: Number(event.target.value) })} /></Field>
       </div>
@@ -309,7 +311,7 @@ function WindowFields({ constraints, updateConstraints }: { constraints: EventCo
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid gap-4 md:grid-cols-2">
       <Field label="Start date"><Input type="date" value={constraints.windowStart ?? ""} onChange={(event) => updateConstraints({ windowStart: event.target.value })} /></Field>
       <Field label="End date"><Input type="date" value={constraints.windowEnd ?? ""} onChange={(event) => updateConstraints({ windowEnd: event.target.value })} /></Field>
     </div>

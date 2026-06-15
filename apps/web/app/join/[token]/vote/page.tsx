@@ -78,7 +78,7 @@ export default function VotePage({ params }: { params: { token: string } }) {
               <Card className="border-primary/30 bg-primary/5">
                 <p className="text-sm font-medium text-primary">Confirmed time</p>
                 <p className="mt-2 text-2xl font-semibold">{formatSlot(event.finalSlot, event.duration)}</p>
-                <a href={`${apiBaseUrl}/api/events/${event.id}/ics`} className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                <a href={`${apiBaseUrl}/api/events/${event.id}/ics`} className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
                   <CalendarPlus className="h-4 w-4" />
                   Add to Calendar
                 </a>
@@ -89,7 +89,7 @@ export default function VotePage({ params }: { params: { token: string } }) {
               <Card>
                 <p className="font-medium">Voting is not open yet.</p>
                 <p className="mt-1 text-sm text-muted-foreground">You can still share or update your availability.</p>
-                <Link href={`/join/${params.token}/availability`} className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                <Link href={`/join/${params.token}/availability`} className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:w-auto">
                   Share My Availability
                 </Link>
               </Card>
@@ -136,7 +136,7 @@ export default function VotePage({ params }: { params: { token: string } }) {
 
 function VoteButton({ label, icon, selected, disabled, onClick }: { label: string; icon: string; selected: boolean; disabled: boolean; onClick: () => void }) {
   return (
-    <Button type="button" variant={selected ? "primary" : "secondary"} disabled={disabled} onClick={onClick}>
+    <Button type="button" className="h-12 w-full" variant={selected ? "primary" : "secondary"} disabled={disabled} onClick={onClick}>
       <span aria-hidden>{icon}</span>
       {label}
     </Button>
