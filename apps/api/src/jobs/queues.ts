@@ -4,6 +4,7 @@ import { candidateIntervalsFromStarts, generateCandidateSlots, rankSuggestions }
 import { Queue, Worker } from "bullmq";
 import { env } from "../env";
 import { prisma } from "../lib/prisma";
+import { notifyEventUpdated } from "../realtime";
 
 export const calendarSyncQueue = env.REDIS_URL
   ? new Queue("calendar-sync", { connection: { url: env.REDIS_URL } })
@@ -18,7 +19,12 @@ export const suggestionRecomputeQueue = env.REDIS_URL
   : null;
 
 export async function enqueueRecompute(eventId: string): Promise<void> {
-  await suggestionRecomputeQueue?.add(
+  if (!suggestionRecomputeQueue) {
+    await processSuggestionRecompute(eventId);
+    return;
+  }
+
+  await suggestionRecomputeQueue.add(
     "suggestion-recompute",
     { eventId },
     {
@@ -80,6 +86,8 @@ export async function processSuggestionRecompute(eventId: string): Promise<void>
       }
     }))
   ]);
+
+  notifyEventUpdated(event.id, { reason: "suggestions_recomputed" });
 }
 
 function jsonArray<T>(value: Prisma.JsonValue): T[] {

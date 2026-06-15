@@ -68,12 +68,21 @@ export default function JoinPage({ params }: { params: { token: string } }) {
                   </div>
                 ) : null}
 
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Link href={`/join/${params.token}/availability`} className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
-                    Share My Availability
-                  </Link>
-                  <Button type="button" variant="secondary" onClick={() => setDeclined(true)}>I Can't Make It</Button>
-                </div>
+                {event.status === "VOTING" ? (
+                  <Card className="border-amber-200 bg-amber-50">
+                    <p className="font-medium text-amber-900">The organizer has opened voting! Pick your preferred times.</p>
+                    <Link href={`/join/${params.token}/vote`} className="mt-4 inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                      Vote Now
+                    </Link>
+                  </Card>
+                ) : (
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Link href={`/join/${params.token}/availability`} className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90">
+                      Share My Availability
+                    </Link>
+                    <Button type="button" variant="secondary" onClick={() => setDeclined(true)}>I Can't Make It</Button>
+                  </div>
+                )}
               </>
             )}
           </>

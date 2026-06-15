@@ -22,8 +22,26 @@ export interface JoinParticipant {
     finalSlot: string | null;
     responseCount: number;
     participantCount: number;
+    suggestions: JoinSuggestion[];
     organizerName: string;
   };
+}
+
+export interface JoinSuggestion {
+  id: string;
+  eventId: string;
+  startTime: string;
+  endTime: string;
+  score: number;
+  breakdown: {
+    free?: string[];
+    preferred?: string[];
+    available?: string[];
+    unavailable?: string[];
+    undesirable?: string[];
+  };
+  rank: number;
+  votes?: Record<string, "yes" | "no" | "maybe"> | null;
 }
 
 export const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";

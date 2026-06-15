@@ -4,7 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { enqueueRecompute } from "../jobs/queues";
 import { prisma } from "../lib/prisma";
-import { broadcast } from "../realtime";
+import { notifyEventUpdated, notifyParticipantResponded } from "../realtime";
 
 const intervalSchema = z.object({
   start: z.string().datetime(),
@@ -41,6 +41,7 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
             status: true,
             finalSlot: true,
             participants: { select: { responded: true } },
+            suggestions: { orderBy: { rank: "asc" } },
             organizer: { select: { name: true, email: true } }
           }
         }
@@ -69,7 +70,7 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
     });
 
     await enqueueSuggestionRecompute(participant.eventId, source);
-    broadcast(app, { type: "participant.updated", eventId: participant.eventId });
+    await notifyResponseCounts(participant.eventId);
     return reply.send({ participant: serializePrivateParticipant(participant) });
   });
 
@@ -91,7 +92,7 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
     });
 
     await enqueueSuggestionRecompute(participant.eventId, "manual");
-    broadcast(app, { type: "participant.updated", eventId: participant.eventId });
+    await notifyResponseCounts(participant.eventId);
     return reply.send({ participant: serializePrivateParticipant(participant) });
   });
 
@@ -123,7 +124,8 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
       data: { votes: votes as Prisma.InputJsonValue }
     });
 
-    return reply.send({ suggestion: updated });
+    notifyEventUpdated(participant.eventId, { reason: "vote_updated" });
+    return reply.send({ suggestion: serializeSuggestion(updated) });
   });
 }
 
@@ -149,8 +151,20 @@ type GuestParticipantRecord = ParticipantRecord & {
     status: string;
     finalSlot: Date | null;
     participants: Array<{ responded: boolean }>;
+    suggestions: SuggestionRecord[];
     organizer: { name: string | null; email: string };
   };
+};
+
+type SuggestionRecord = {
+  id: string;
+  eventId: string;
+  startTime: Date;
+  endTime: Date;
+  score: number;
+  breakdown: Prisma.JsonValue;
+  rank: number;
+  votes: Prisma.JsonValue | null;
 };
 
 function serializeGuestParticipant(participant: GuestParticipantRecord) {
@@ -173,6 +187,7 @@ function serializeGuestParticipant(participant: GuestParticipantRecord) {
       finalSlot: participant.event.finalSlot?.toISOString() ?? null,
       responseCount: participant.event.participants.filter((item) => item.responded).length,
       participantCount: participant.event.participants.length,
+      suggestions: participant.event.suggestions.map(serializeSuggestion),
       organizerName: participant.event.organizer.name ?? participant.event.organizer.email
     }
   };
@@ -202,6 +217,26 @@ function hasPreferences(value: Prisma.JsonValue): boolean {
 
 function jsonArray<T>(value: Prisma.JsonValue): T[] {
   return Array.isArray(value) ? value as unknown as T[] : [];
+}
+
+function serializeSuggestion(suggestion: SuggestionRecord) {
+  return {
+    ...suggestion,
+    startTime: suggestion.startTime.toISOString(),
+    endTime: suggestion.endTime.toISOString()
+  };
+}
+
+async function notifyResponseCounts(eventId: string): Promise<void> {
+  const counts = await prisma.participant.groupBy({
+    by: ["responded"],
+    where: { eventId },
+    _count: { _all: true }
+  });
+
+  const totalCount = counts.reduce((sum, item) => sum + item._count._all, 0);
+  const respondedCount = counts.find((item) => item.responded)?._count._all ?? 0;
+  notifyParticipantResponded(eventId, respondedCount, totalCount);
 }
 
 async function enqueueSuggestionRecompute(eventId: string, source: "manual" | "google" | "outlook"): Promise<void> {

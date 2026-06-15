@@ -5,7 +5,8 @@ import { z } from "zod";
 import { requireUser } from "../auth/require-user";
 import { env } from "../env";
 import { prisma } from "../lib/prisma";
-import { sendInviteEmail } from "../lib/resend";
+import { sendEventConfirmedEmail, sendInviteEmail, sendVotingOpenEmail } from "../lib/resend";
+import { notifyEventUpdated } from "../realtime";
 
 const dateStringSchema = z.string().refine((value) => !Number.isNaN(Date.parse(value)), "Invalid date");
 const timeStringSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
@@ -151,7 +152,10 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
 
     const { id } = parsedParams.data;
     const { finalSlot } = parsedBody.data;
-    const existing = await prisma.event.findFirst({ where: { id, organizerId: session.userId } });
+    const existing = await prisma.event.findFirst({
+      where: { id, organizerId: session.userId },
+      include: { participants: true }
+    });
     if (!existing) return reply.code(404).send({ error: "Event not found" });
 
     const event = await prisma.event.update({
@@ -159,6 +163,17 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
       data: { finalSlot: new Date(finalSlot), status: "CONFIRMED" }
     });
 
+    const confirmedSlot = formatDisplayDate(event.finalSlot);
+    const icsUrl = new URL(`/api/events/${event.id}/ics`, env.API_URL).toString();
+    void Promise.all(existing.participants.map((participant) => sendEventConfirmedEmail(
+      participant.email,
+      participant.name ?? participant.email,
+      event.title,
+      confirmedSlot,
+      icsUrl
+    ))).catch((error) => request.log.error({ error, eventId: event.id }, "Failed to send confirmation emails"));
+
+    notifyEventUpdated(event.id, { status: event.status });
     return reply.send({ event: serializeEvent(event) });
   });
 
@@ -227,7 +242,10 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     if (!parsedParams.success) return reply.code(400).send({ error: "Invalid event id" });
 
     const { id } = parsedParams.data;
-    const existing = await prisma.event.findFirst({ where: { id, organizerId: session.userId } });
+    const existing = await prisma.event.findFirst({
+      where: { id, organizerId: session.userId },
+      include: { participants: true }
+    });
     if (!existing) return reply.code(404).send({ error: "Event not found" });
 
     const event = await prisma.event.update({
@@ -241,6 +259,17 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
       take: 3
     });
 
+    void Promise.all(existing.participants.map((participant) => {
+      const voteUrl = new URL(`/join/${participant.token}/vote`, env.WEB_URL).toString();
+      return sendVotingOpenEmail(
+        participant.email,
+        participant.name ?? participant.email,
+        event.title,
+        voteUrl
+      );
+    })).catch((error) => request.log.error({ error, eventId: event.id }, "Failed to send voting emails"));
+
+    notifyEventUpdated(event.id, { status: event.status });
     return reply.send({ event: serializeEvent(event), suggestions: suggestions.map(serializeSuggestion) });
   });
 
@@ -363,4 +392,16 @@ function escapeIcalText(value: string): string {
     .replace(/\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
+}
+
+function formatDisplayDate(date: Date | null): string {
+  if (!date) return "";
+  return new Intl.DateTimeFormat("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short"
+  }).format(date);
 }

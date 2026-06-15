@@ -1,9 +1,9 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
-import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { env } from "./env";
+import { setupRealtime } from "./realtime";
 import { authRoutes } from "./routes/auth";
 import { calendarRoutes } from "./routes/calendar";
 import { eventRoutes } from "./routes/events";
@@ -19,12 +19,9 @@ export async function buildApp() {
   });
   await app.register(cookie);
   await app.register(rateLimit, { max: 100, timeWindow: "1 minute" });
-  await app.register(websocket);
+  setupRealtime(app);
 
   app.get("/health", async () => ({ ok: true }));
-  app.get("/api/realtime", { websocket: true }, (connection) => {
-    connection.socket.send(JSON.stringify({ type: "connected" }));
-  });
 
   await app.register(authRoutes);
   await app.register(eventRoutes);
