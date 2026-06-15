@@ -64,7 +64,20 @@ function resolveWindow(constraints: StoredEventConstraints): { start: Date; end:
 
   if (windowType === "specific_month") {
     const year = constraints.year ?? new Date().getUTCFullYear();
-    const month = typeof constraints.month === "number" ? constraints.month - 1 : new Date().getUTCMonth();
+    // #19 — If month arrives as a string (e.g. from JSON), parse it and error on NaN
+    const rawMonth = constraints.month;
+    let monthNum: number;
+    if (typeof rawMonth === "number") {
+      monthNum = rawMonth;
+    } else if (typeof rawMonth === "string") {
+      monthNum = parseInt(rawMonth, 10);
+      if (Number.isNaN(monthNum)) {
+        throw new Error(`specific_month constraint received an invalid month value: "${rawMonth}". Expected a number 1–12.`);
+      }
+    } else {
+      throw new Error("specific_month constraint is missing a month value.");
+    }
+    const month = monthNum - 1; // convert to 0-indexed
     return {
       start: new Date(Date.UTC(year, month, 1, 0, 0, 0, 0)),
       end: new Date(Date.UTC(year, month + 1, 0, 23, 59, 59, 999))
