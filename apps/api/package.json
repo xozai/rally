@@ -19,7 +19,7 @@
     "@fastify/cookie": "^9.4.0",
     "@fastify/cors": "^9.0.1",
     "@fastify/rate-limit": "^9.1.0",
-    "@fastify/websocket": "^10.0.1",
+    "@fastify/websocket": "^11.2.0",
     "@prisma/client": "^5.16.1",
     "@rally/shared": "*",
     "bullmq": "^5.9.3",
