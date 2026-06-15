@@ -1,5 +1,8 @@
+import type { Prisma } from "@prisma/client";
+import type { PreferenceBlock, TimeInterval } from "@rally/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { suggestionRecomputeQueue } from "../jobs/queues";
 import { prisma } from "../lib/prisma";
 import { broadcast } from "../realtime";
 
@@ -9,7 +12,8 @@ const intervalSchema = z.object({
 });
 
 const availabilitySchema = z.object({
-  availability: z.array(intervalSchema)
+  availability: z.array(intervalSchema),
+  source: z.enum(["manual", "google", "outlook"])
 });
 
 const preferencesSchema = z.object({
@@ -20,47 +24,87 @@ const preferencesSchema = z.object({
 
 export async function participantRoutes(app: FastifyInstance): Promise<void> {
   app.get("/api/participants/:token", async (request, reply) => {
-    const { token } = z.object({ token: z.string() }).parse(request.params);
+    const parsedParams = z.object({ token: z.string() }).safeParse(request.params);
+    if (!parsedParams.success) return reply.code(400).send({ error: "Invalid invite token" });
+
+    const { token } = parsedParams.data;
     const participant = await prisma.participant.findUnique({
       where: { token },
-      include: { event: { select: { id: true, title: true, description: true, duration: true, constraints: true, status: true } } }
+      include: {
+        event: {
+          select: {
+            id: true,
+            title: true,
+            description: true,
+            duration: true,
+            constraints: true,
+            status: true,
+            organizer: { select: { name: true, email: true } }
+          }
+        }
+      }
     });
 
     if (!participant) return reply.code(404).send({ error: "Invite not found" });
-    return reply.send({ participant });
+    return reply.send({ participant: serializeGuestParticipant(participant) });
   });
 
   app.post("/api/participants/:token/availability", async (request, reply) => {
-    const { token } = z.object({ token: z.string() }).parse(request.params);
-    const { availability } = availabilitySchema.parse(request.body);
+    const parsedParams = z.object({ token: z.string() }).safeParse(request.params);
+    if (!parsedParams.success) return reply.code(400).send({ error: "Invalid invite token" });
+
+    const parsedBody = availabilitySchema.safeParse(request.body);
+    if (!parsedBody.success) return reply.code(400).send({ error: parsedBody.error.issues[0]?.message ?? "Invalid availability input" });
+
+    const { token } = parsedParams.data;
+    const { availability, source } = parsedBody.data;
+    const existing = await prisma.participant.findUnique({ where: { token } });
+    if (!existing) return reply.code(404).send({ error: "Invite not found" });
+
     const participant = await prisma.participant.update({
       where: { token },
-      data: { availability, responded: true }
+      data: { availability: availability as Prisma.InputJsonValue, responded: hasPreferences(existing.preferences) }
     });
 
+    await enqueueSuggestionRecompute(participant.eventId, source);
     broadcast(app, { type: "participant.updated", eventId: participant.eventId });
-    return reply.send({ participant });
+    return reply.send({ participant: serializePrivateParticipant(participant) });
   });
 
   app.post("/api/participants/:token/preferences", async (request, reply) => {
-    const { token } = z.object({ token: z.string() }).parse(request.params);
-    const { preferences } = preferencesSchema.parse(request.body);
+    const parsedParams = z.object({ token: z.string() }).safeParse(request.params);
+    if (!parsedParams.success) return reply.code(400).send({ error: "Invalid invite token" });
+
+    const parsedBody = preferencesSchema.safeParse(request.body);
+    if (!parsedBody.success) return reply.code(400).send({ error: parsedBody.error.issues[0]?.message ?? "Invalid preferences input" });
+
+    const { token } = parsedParams.data;
+    const { preferences } = parsedBody.data;
+    const existing = await prisma.participant.findUnique({ where: { token } });
+    if (!existing) return reply.code(404).send({ error: "Invite not found" });
+
     const participant = await prisma.participant.update({
       where: { token },
-      data: { preferences, responded: true }
+      data: { preferences: preferences as Prisma.InputJsonValue, responded: hasAvailability(existing.availability) }
     });
 
+    await enqueueSuggestionRecompute(participant.eventId, "manual");
     broadcast(app, { type: "participant.updated", eventId: participant.eventId });
-    return reply.send({ participant });
+    return reply.send({ participant: serializePrivateParticipant(participant) });
   });
 
   app.post("/api/participants/:token/vote", async (request, reply) => {
-    const { token } = z.object({ token: z.string() }).parse(request.params);
-    const { suggestionId, vote } = z.object({
+    const parsedParams = z.object({ token: z.string() }).safeParse(request.params);
+    if (!parsedParams.success) return reply.code(400).send({ error: "Invalid invite token" });
+
+    const parsedBody = z.object({
       suggestionId: z.string(),
       vote: z.enum(["yes", "no", "maybe"])
-    }).parse(request.body);
+    }).safeParse(request.body);
+    if (!parsedBody.success) return reply.code(400).send({ error: parsedBody.error.issues[0]?.message ?? "Invalid vote input" });
 
+    const { token } = parsedParams.data;
+    const { suggestionId, vote } = parsedBody.data;
     const participant = await prisma.participant.findUnique({ where: { token } });
     if (!participant) return reply.code(404).send({ error: "Invite not found" });
 
@@ -74,9 +118,85 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
 
     const updated = await prisma.suggestion.update({
       where: { id: suggestionId },
-      data: { votes }
+      data: { votes: votes as Prisma.InputJsonValue }
     });
 
     return reply.send({ suggestion: updated });
   });
+}
+
+type ParticipantRecord = {
+  id: string;
+  eventId: string;
+  userId: string | null;
+  email: string;
+  name: string | null;
+  availability: Prisma.JsonValue;
+  preferences: Prisma.JsonValue;
+  responded: boolean;
+  createdAt: Date;
+};
+
+type GuestParticipantRecord = ParticipantRecord & {
+  event: {
+    id: string;
+    title: string;
+    description: string | null;
+    duration: number;
+    constraints: Prisma.JsonValue;
+    status: string;
+    organizer: { name: string | null; email: string };
+  };
+};
+
+function serializeGuestParticipant(participant: GuestParticipantRecord) {
+  return {
+    id: participant.id,
+    eventId: participant.eventId,
+    email: participant.email,
+    name: participant.name,
+    availability: jsonArray<TimeInterval>(participant.availability),
+    preferences: jsonArray<PreferenceBlock>(participant.preferences),
+    responded: participant.responded,
+    createdAt: participant.createdAt.toISOString(),
+    event: {
+      id: participant.event.id,
+      title: participant.event.title,
+      description: participant.event.description,
+      duration: participant.event.duration,
+      constraints: participant.event.constraints,
+      status: participant.event.status,
+      organizerName: participant.event.organizer.name ?? participant.event.organizer.email
+    }
+  };
+}
+
+function serializePrivateParticipant(participant: ParticipantRecord) {
+  return {
+    id: participant.id,
+    eventId: participant.eventId,
+    userId: participant.userId,
+    email: participant.email,
+    name: participant.name,
+    availability: jsonArray<TimeInterval>(participant.availability),
+    preferences: jsonArray<PreferenceBlock>(participant.preferences),
+    responded: participant.responded,
+    createdAt: participant.createdAt.toISOString()
+  };
+}
+
+function hasAvailability(value: Prisma.JsonValue): boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function hasPreferences(value: Prisma.JsonValue): boolean {
+  return Array.isArray(value) && value.length > 0;
+}
+
+function jsonArray<T>(value: Prisma.JsonValue): T[] {
+  return Array.isArray(value) ? value as unknown as T[] : [];
+}
+
+async function enqueueSuggestionRecompute(eventId: string, source: "manual" | "google" | "outlook"): Promise<void> {
+  await suggestionRecomputeQueue?.add("recompute", { eventId, source });
 }
