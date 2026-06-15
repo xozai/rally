@@ -1,0 +1,36 @@
+import cookie from "@fastify/cookie";
+import cors from "@fastify/cors";
+import rateLimit from "@fastify/rate-limit";
+import websocket from "@fastify/websocket";
+import Fastify from "fastify";
+import { env } from "./env";
+import { authRoutes } from "./routes/auth";
+import { calendarRoutes } from "./routes/calendar";
+import { eventRoutes } from "./routes/events";
+import { participantRoutes } from "./routes/participants";
+import { suggestionRoutes } from "./routes/suggestions";
+
+export async function buildApp() {
+  const app = Fastify({ logger: true });
+
+  await app.register(cors, {
+    origin: env.WEB_URL,
+    credentials: true
+  });
+  await app.register(cookie);
+  await app.register(rateLimit, { max: 100, timeWindow: "1 minute" });
+  await app.register(websocket);
+
+  app.get("/health", async () => ({ ok: true }));
+  app.get("/api/realtime", { websocket: true }, (connection) => {
+    connection.socket.send(JSON.stringify({ type: "connected" }));
+  });
+
+  await app.register(authRoutes);
+  await app.register(eventRoutes);
+  await app.register(participantRoutes);
+  await app.register(calendarRoutes);
+  await app.register(suggestionRoutes);
+
+  return app;
+}

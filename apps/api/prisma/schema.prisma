@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String        @id @default(cuid())
+  email          String        @unique
+  name           String?
+  googleToken    Json?
+  outlookToken   Json?
+  events         Event[]       @relation("Organizer")
+  participations Participant[]
+  createdAt      DateTime      @default(now())
+}
+
+model Event {
+  id           String        @id @default(cuid())
+  title        String
+  description  String?
+  organizerId  String
+  organizer    User          @relation("Organizer", fields: [organizerId], references: [id])
+  duration     Int
+  constraints  Json
+  status       EventStatus   @default(OPEN)
+  participants Participant[]
+  suggestions  Suggestion[]
+  finalSlot    DateTime?
+  createdAt    DateTime      @default(now())
+  expiresAt    DateTime?
+}
+
+model Participant {
+  id           String   @id @default(cuid())
+  eventId      String
+  event        Event    @relation(fields: [eventId], references: [id])
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  email        String
+  name         String?
+  token        String   @unique
+  availability Json
+  preferences  Json
+  responded    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+}
+
+model Suggestion {
+  id        String   @id @default(cuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id])
+  startTime DateTime
+  endTime   DateTime
+  score     Float
+  breakdown Json
+  rank      Int
+  votes     Json?
+}
+
+enum EventStatus {
+  OPEN
+  VOTING
+  CONFIRMED
+  CANCELLED
+}
