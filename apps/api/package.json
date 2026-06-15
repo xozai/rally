@@ -10,7 +10,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "db:generate": "prisma generate",
-    "db:migrate": "prisma migrate dev"
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "ts-node prisma/seed.ts",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force"
   },
   "dependencies": {
     "@fastify/cookie": "^9.4.0",
@@ -27,6 +30,7 @@
   },
   "devDependencies": {
     "prisma": "^5.16.1",
+    "ts-node": "^10.9.2",
     "tsx": "^4.16.2",
     "vitest": "^1.6.0"
   }

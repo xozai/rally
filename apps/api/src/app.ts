@@ -7,6 +7,7 @@ import { setupRealtime } from "./realtime";
 import { authRoutes } from "./routes/auth";
 import { calendarRoutes } from "./routes/calendar";
 import { eventRoutes } from "./routes/events";
+import { healthRoutes } from "./routes/health";
 import { participantRoutes } from "./routes/participants";
 import { suggestionRoutes } from "./routes/suggestions";
 
@@ -21,8 +22,7 @@ export async function buildApp() {
   await app.register(rateLimit, { max: 100, timeWindow: "1 minute" });
   setupRealtime(app);
 
-  app.get("/health", async () => ({ ok: true }));
-
+  await app.register(healthRoutes);
   await app.register(authRoutes);
   await app.register(eventRoutes);
   await app.register(participantRoutes);
