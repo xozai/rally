@@ -48,7 +48,7 @@ jobs:
 
       - name: Deploy to Vercel
         id: vercel
-        uses: vercel/actions@v4
+        uses: vercel/actions@v5
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
