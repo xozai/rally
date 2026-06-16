@@ -67,7 +67,8 @@ vi.mock("../../realtime.js", () => ({
 }));
 
 vi.mock("../../jobs/queues.js", () => ({
-  enqueueRecompute: vi.fn().mockResolvedValue(undefined)
+  enqueueRecompute: vi.fn().mockResolvedValue(undefined),
+  setupWorker: vi.fn().mockReturnValue(null)
 }));
 
 // ---------------------------------------------------------------------------
@@ -390,8 +391,6 @@ describe("POST /api/events/:id/participants", () => {
   beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 400 for an invalid email address", async () => {
-    vi.mocked(prisma.event.findFirst).mockResolvedValueOnce(makeEventRecord() as never);
-
     const res = await app.inject({
       method: "POST",
       url: "/api/events/ev_1/participants",
