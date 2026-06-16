@@ -39,13 +39,15 @@ export default function AvailabilityPage({ params }: { params: { token: string }
     if (!participant || !calendarConnected) return;
     const bounds = windowBounds(slots);
     if (!bounds) return;
+    const boundsStart = bounds.start;
+    const boundsEnd = bounds.end;
 
     let cancelled = false;
     async function loadCalendarAvailability() {
       setError(null);
       try {
         const endpoint = provider === "outlook" ? "/api/calendar/outlook/freebusy" : "/api/calendar/freebusy";
-        const response = await fetch(`${apiBaseUrl}${endpoint}?start=${encodeURIComponent(bounds.start)}&end=${encodeURIComponent(bounds.end)}`, { credentials: "include" });
+        const response = await fetch(`${apiBaseUrl}${endpoint}?start=${encodeURIComponent(boundsStart)}&end=${encodeURIComponent(boundsEnd)}`, { credentials: "include" });
         if (!response.ok) throw new Error(await readError(response));
         const payload = await response.json() as { busy: TimeInterval[]; source: "google" | "outlook" | "none"; message?: string };
         if (cancelled) return;

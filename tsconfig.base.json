@@ -12,6 +12,10 @@
     "noImplicitOverride": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
-    "strict": true
+    "strict": true,
+    "paths": {
+      "@rally/shared": ["../../packages/shared/src/index.ts"],
+      "@rally/shared/*": ["../../packages/shared/src/*"]
+    }
   }
 }
