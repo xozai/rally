@@ -54,7 +54,8 @@ vi.mock("../../realtime.js", () => ({
 }));
 
 vi.mock("../../jobs/queues.js", () => ({
-  enqueueRecompute: vi.fn().mockResolvedValue(undefined)
+  enqueueRecompute: vi.fn().mockResolvedValue(undefined),
+  setupWorker: vi.fn().mockReturnValue(null)
 }));
 
 vi.mock("../../lib/resend.js", () => ({

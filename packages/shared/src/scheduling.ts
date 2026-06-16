@@ -128,5 +128,5 @@ function isNearBlackout(candidate: CandidateSlot, blackouts: Array<{ start: stri
 
 function calculateRecencyBonus(start: string, now: Date): number {
   const daysAway = Math.max(0, (new Date(start).getTime() - now.getTime()) / (24 * 60 * 60 * 1000));
-  return Math.max(0, 0.5 - daysAway * 0.02);
+  return Math.max(0, 1.0 - daysAway * 0.1);
 }

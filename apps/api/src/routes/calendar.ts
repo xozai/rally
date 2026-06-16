@@ -25,6 +25,7 @@ interface EncryptedPayload {
   iv: string;
   authTag: string;
   data: string;
+  [key: string]: string;
 }
 
 interface GoogleFreeBusyResponse {

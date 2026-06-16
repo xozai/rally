@@ -110,8 +110,8 @@ describe("single-day date_range", () => {
       }),
       60
     );
-    // 08:00 → 21:00 = 26 half-hour increments
-    expect(slots).toHaveLength(26);
+    // 08:00 → 21:00 at 30-min steps = 27 start times (26 half-hour gaps between them)
+    expect(slots).toHaveLength(27);
     expect(slots[0]).toBe("2026-08-01T08:00:00.000Z");
     expect(slots[slots.length - 1]).toBe("2026-08-01T21:00:00.000Z");
   });
