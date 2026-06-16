@@ -107,13 +107,13 @@ function decryptToken(value: Prisma.JsonValue): OAuthToken {
   return decryptJson<OAuthToken>(value);
 }
 
-function isEncryptedPayload(value: Prisma.JsonValue): value is EncryptedPayload {
+function isEncryptedPayload(value: unknown): value is EncryptedPayload {
   return typeof value === "object"
     && value !== null
     && !Array.isArray(value)
-    && typeof value.iv === "string"
-    && typeof value.authTag === "string"
-    && typeof value.data === "string";
+    && typeof (value as Record<string, unknown>).iv === "string"
+    && typeof (value as Record<string, unknown>).authTag === "string"
+    && typeof (value as Record<string, unknown>).data === "string";
 }
 
 async function fetchGoogleFreeBusy(accessToken: string, start: string, end: string): Promise<{ ok: boolean; status: number; busy: TimeInterval[] }> {
