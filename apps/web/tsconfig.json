@@ -6,7 +6,11 @@
     "jsx": "preserve",
     "module": "ESNext",
     "plugins": [{ "name": "next" }],
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@rally/shared": ["../../packages/shared/src/index.ts"],
+      "@rally/shared/*": ["../../packages/shared/src/*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
