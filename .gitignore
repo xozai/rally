@@ -9,3 +9,4 @@ coverage
 *.log
 apps/api/prisma/dev.db
 apps/api/generated
+CLAUDE.md
