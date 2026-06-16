@@ -16,7 +16,7 @@ export default function TermsPage() {
         <section className="space-y-4">
           <h2 className="text-xl font-semibold">Beta software disclaimer</h2>
           <p className="text-sm leading-6 text-muted-foreground">
-            Rally is currently in <strong>beta</strong>. It is provided "as is" without warranty of any kind, express or implied. Features may change, data may be reset, and the service may be interrupted without notice. Use at your own risk.
+            Rally is currently in <strong>beta</strong>. It is provided &quot;as is&quot; without warranty of any kind, express or implied. Features may change, data may be reset, and the service may be interrupted without notice. Use at your own risk.
           </p>
         </section>
 

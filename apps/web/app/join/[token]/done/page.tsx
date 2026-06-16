@@ -79,9 +79,9 @@ export default function DonePage({ params }: { params: { token: string } }) {
           <>
             <header className="space-y-3">
               <CheckCircle2 className="h-10 w-10 text-primary" />
-              <h1 className="text-3xl font-semibold">You're all set!</h1>
+              <h1 className="text-3xl font-semibold">You&apos;re all set!</h1>
               <p className="text-sm leading-6 text-muted-foreground">
-                We'll notify you when {event.organizerName} picks a time.
+                We&apos;ll notify you when {event.organizerName} picks a time.
               </p>
             </header>
 

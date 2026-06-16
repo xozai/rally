@@ -23,7 +23,7 @@ export default function PrivacyPage() {
               <span className="font-medium text-foreground">Availability intervals</span> — the blocks of time you mark as free or busy. Stored as start/end timestamps. We do <strong>not</strong> store raw calendar events, meeting titles, or any other calendar metadata.
             </li>
             <li>
-              <span className="font-medium text-foreground">Preference ratings</span> — your "preferred / available / rather not" ratings for specific slots.
+              <span className="font-medium text-foreground">Preference ratings</span> — your &quot;preferred / available / rather not&quot; ratings for specific slots.
             </li>
             <li>
               <span className="font-medium text-foreground">Votes</span> — your vote (yes / maybe / no) on suggested meeting slots during the voting phase.

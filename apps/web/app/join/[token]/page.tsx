@@ -111,7 +111,7 @@ export default function JoinPage({ params }: { params: { token: string } }) {
 
                 {declined ? (
                   <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-                    Thanks for letting us know — you've been marked as unable to attend. You can still share your availability if your plans change.
+                    Thanks for letting us know — you&apos;ve been marked as unable to attend. You can still share your availability if your plans change.
                   </div>
                 ) : null}
 
