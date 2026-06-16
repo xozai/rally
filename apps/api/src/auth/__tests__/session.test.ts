@@ -241,7 +241,7 @@ describe("setSessionCookie", () => {
   it("calls reply.setCookie with cookie name 'rally_session'", async () => {
     const { setSessionCookie } = await getSession();
     const setCookie = vi.fn();
-    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[1];
+    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[0];
     await setSessionCookie(reply, { userId: "u_1", email: "cookie@example.com" });
     expect(setCookie).toHaveBeenCalledOnce();
     const [name] = setCookie.mock.calls[0] as [string, string, object];
@@ -251,7 +251,7 @@ describe("setSessionCookie", () => {
   it("cookie value is a valid JWT string", async () => {
     const { setSessionCookie } = await getSession();
     const setCookie = vi.fn();
-    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[1];
+    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[0];
     await setSessionCookie(reply, { userId: "u_1", email: "cookie@example.com" });
     const [, token] = setCookie.mock.calls[0] as [string, string, object];
     expect(token.split(".")).toHaveLength(3);
@@ -260,7 +260,7 @@ describe("setSessionCookie", () => {
   it("cookie options include httpOnly: true", async () => {
     const { setSessionCookie } = await getSession();
     const setCookie = vi.fn();
-    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[1];
+    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[0];
     await setSessionCookie(reply, { userId: "u_1", email: "cookie@example.com" });
     const [, , options] = setCookie.mock.calls[0] as [string, string, Record<string, unknown>];
     expect(options["httpOnly"]).toBe(true);
@@ -269,7 +269,7 @@ describe("setSessionCookie", () => {
   it("cookie options include sameSite: 'lax'", async () => {
     const { setSessionCookie } = await getSession();
     const setCookie = vi.fn();
-    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[1];
+    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[0];
     await setSessionCookie(reply, { userId: "u_1", email: "cookie@example.com" });
     const [, , options] = setCookie.mock.calls[0] as [string, string, Record<string, unknown>];
     expect(options["sameSite"]).toBe("lax");
@@ -278,7 +278,7 @@ describe("setSessionCookie", () => {
   it("cookie options include path: '/'", async () => {
     const { setSessionCookie } = await getSession();
     const setCookie = vi.fn();
-    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[1];
+    const reply = { setCookie } as unknown as Parameters<typeof setSessionCookie>[0];
     await setSessionCookie(reply, { userId: "u_1", email: "cookie@example.com" });
     const [, , options] = setCookie.mock.calls[0] as [string, string, Record<string, unknown>];
     expect(options["path"]).toBe("/");

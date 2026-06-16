@@ -131,7 +131,7 @@ function makeEventRecord(overrides: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 describe("POST /api/events", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 401 when no session cookie is present", async () => {
     const res = await app.inject({ method: "POST", url: "/api/events", body: {} });
@@ -225,7 +225,7 @@ describe("POST /api/events", () => {
 // ---------------------------------------------------------------------------
 
 describe("GET /api/events", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 401 when unauthenticated", async () => {
     const res = await app.inject({ method: "GET", url: "/api/events" });
@@ -252,7 +252,7 @@ describe("GET /api/events", () => {
 // ---------------------------------------------------------------------------
 
 describe("GET /api/events/:id", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 401 when unauthenticated", async () => {
     const res = await app.inject({ method: "GET", url: "/api/events/ev_1" });
@@ -291,7 +291,7 @@ describe("GET /api/events/:id", () => {
 // ---------------------------------------------------------------------------
 
 describe("PATCH /api/events/:id/confirm", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 401 when unauthenticated", async () => {
     const res = await app.inject({
@@ -348,7 +348,7 @@ describe("PATCH /api/events/:id/confirm", () => {
 // ---------------------------------------------------------------------------
 
 describe("DELETE /api/events/:id", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 401 when unauthenticated", async () => {
     const res = await app.inject({ method: "DELETE", url: "/api/events/ev_1" });
@@ -387,7 +387,7 @@ describe("DELETE /api/events/:id", () => {
 // ---------------------------------------------------------------------------
 
 describe("POST /api/events/:id/participants", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 400 for an invalid email address", async () => {
     vi.mocked(prisma.event.findFirst).mockResolvedValueOnce(makeEventRecord() as never);

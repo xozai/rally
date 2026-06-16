@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Generate Prisma client
+        run: npm --workspace apps/api exec prisma generate
+
       - name: Lint
         run: npm run lint
 

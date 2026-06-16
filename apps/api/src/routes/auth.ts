@@ -175,7 +175,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!tokenResponse.ok) {
-      request.log.error(await tokenResponse.text(), "Google token exchange failed");
+      request.log.error({ body: await tokenResponse.text() }, "Google token exchange failed");
       return reply.code(400).send({ error: "Google token exchange failed" });
     }
 
@@ -185,7 +185,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!profileResponse.ok) {
-      request.log.error(await profileResponse.text(), "Google profile fetch failed");
+      request.log.error({ body: await profileResponse.text() }, "Google profile fetch failed");
       return reply.code(400).send({ error: "Google profile fetch failed" });
     }
 
@@ -257,7 +257,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!tokenResponse.ok) {
-      request.log.error(await tokenResponse.text(), "Google calendar token exchange failed");
+      request.log.error({ body: await tokenResponse.text() }, "Google calendar token exchange failed");
       return reply.code(400).send({ error: "Google token exchange failed" });
     }
 
@@ -324,7 +324,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!tokenResponse.ok) {
-      request.log.error(await tokenResponse.text(), "Microsoft token exchange failed");
+      request.log.error({ body: await tokenResponse.text() }, "Microsoft token exchange failed");
       return reply.code(400).send({ error: "Microsoft token exchange failed" });
     }
 

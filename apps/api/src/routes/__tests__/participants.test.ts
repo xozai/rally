@@ -141,7 +141,7 @@ function makeSuggestion(overrides: Record<string, unknown> = {}) {
 // ---------------------------------------------------------------------------
 
 describe("GET /api/participants/:token", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 404 for an unknown token", async () => {
     vi.mocked(prisma.participant.findUnique).mockResolvedValueOnce(null);
@@ -206,7 +206,7 @@ describe("GET /api/participants/:token", () => {
 // ---------------------------------------------------------------------------
 
 describe("POST /api/participants/:token/availability", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   const validAvailability = {
     availability: [
@@ -309,7 +309,7 @@ describe("POST /api/participants/:token/availability", () => {
 // ---------------------------------------------------------------------------
 
 describe("POST /api/participants/:token/preferences", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   const validPreferences = {
     preferences: [
@@ -412,7 +412,7 @@ describe("POST /api/participants/:token/preferences", () => {
 // ---------------------------------------------------------------------------
 
 describe("POST /api/participants/:token/vote", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); });
 
   it("returns 404 for unknown token", async () => {
     vi.mocked(prisma.participant.findUnique).mockResolvedValueOnce(null);
