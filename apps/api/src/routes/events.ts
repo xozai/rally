@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireUser } from "../auth/require-user";
 import { getSession } from "../auth/session";
+import { generateIcsToken, verifyIcsToken } from "../lib/crypto";
 import { env } from "../env";
 import { prisma } from "../lib/prisma";
 import { sendEventConfirmedEmail, sendInviteEmail, sendVotingOpenEmail } from "../lib/resend";
@@ -115,7 +116,9 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(410).send({ error: "This Rally has expired" });
     }
 
-    return reply.send({ event: serializeOrganizerEvent(event) });
+    // #38 — include icsToken so organizer UI can build the ICS download link
+    const icsToken = event.status === "CONFIRMED" ? generateIcsToken(event.id) : null;
+    return reply.send({ event: { ...serializeOrganizerEvent(event), icsToken } });
   });
 
   app.get("/api/events/:id/ics", async (request, reply) => {
@@ -123,8 +126,7 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     if (!parsedParams.success) return reply.code(400).send({ error: "Invalid event id" });
 
     const event = await prisma.event.findUnique({
-      where: { id: parsedParams.data.id },
-      include: { participants: { select: { token: true } } }
+      where: { id: parsedParams.data.id }
     });
     if (!event || event.status !== "CONFIRMED") {
       return reply.code(404).send({ error: "Confirmed event not found" });
@@ -135,15 +137,13 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "Event has no confirmed time slot" });
     }
 
-    // #16 — require auth: either session owner OR valid participant token
+    // #38 — require auth: valid session (organizer) OR valid HMAC-signed token
     const query = z.object({ token: z.string().optional() }).parse(request.query);
     const session = await getSession(request);
     const isOrganizer = session?.userId === event.organizerId;
-    const isValidParticipant = query.token
-      ? event.participants.some((p: { token: string }) => p.token === query.token)
-      : false;
+    const isValidToken = query.token ? verifyIcsToken(event.id, query.token) : false;
 
-    if (!isOrganizer && !isValidParticipant) {
+    if (!isOrganizer && !isValidToken) {
       return reply.code(401).send({ error: "Authentication required" });
     }
 
@@ -192,8 +192,10 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
       data: { finalSlot: new Date(finalSlot), status: "CONFIRMED" }
     });
 
+    // #38 — stateless HMAC token so each participant gets a signed ICS URL
+    const icsToken = generateIcsToken(event.id);
     const confirmedSlot = formatDisplayDate(event.finalSlot);
-    const icsUrl = new URL(`/api/events/${event.id}/ics`, env.API_URL).toString();
+    const icsUrl = new URL(`/api/events/${event.id}/ics?token=${encodeURIComponent(icsToken)}`, env.API_URL).toString();
     if (sendInvites) {
       void Promise.all(existing.participants.map((participant) => sendEventConfirmedEmail(
         participant.email,
