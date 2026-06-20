@@ -102,27 +102,15 @@ export function expandIntervals(intervals: TimeInterval[], slots: string[]): Set
 }
 
 export function constraintsSummary(constraints: EventConstraints): string {
-  const stored = constraints as Omit<EventConstraints, "month" | "timeOfDay"> & {
-    windowType?: string;
-    windowStart?: string;
-    windowEnd?: string;
-    nDays?: number;
-    month?: string | number;
-    year?: number;
-    daysOfWeek?: string[];
-    timeOfDay?: string;
-    customStart?: string;
-    customEnd?: string;
-  };
-  const days = stored.daysOfWeek?.join(", ") ?? stored.dayPreference ?? "all days";
-  const time = stored.timeOfDay === "custom"
-    ? `${stored.customStart ?? ""}-${stored.customEnd ?? ""}`
-    : stored.timeOfDay ?? "any time";
+  const days = constraints.daysOfWeek?.join(", ") ?? constraints.dayPreference ?? "all days";
+  const time = constraints.timeOfDay === "custom"
+    ? `${constraints.customStart ?? ""}-${constraints.customEnd ?? ""}`
+    : constraints.timeOfDay ?? "any time";
 
-  if (stored.windowType === "next_n_days") return `Next ${stored.nDays ?? 30} days · ${days} · ${time}`;
-  if (stored.windowType === "specific_month") return `${stored.month ?? ""}/${stored.year ?? ""} · ${days} · ${time}`;
-  if (stored.windowType === "after_date") return `After ${stored.windowStart ?? "selected date"} · ${days} · ${time}`;
-  if (stored.windowType === "date_range") return `${stored.windowStart ?? "Start"} to ${stored.windowEnd ?? "End"} · ${days} · ${time}`;
+  if (constraints.windowType === "next_n_days") return `Next ${constraints.nDays ?? 30} days · ${days} · ${time}`;
+  if (constraints.windowType === "specific_month") return `${constraints.month ?? ""}/${constraints.year ?? ""} · ${days} · ${time}`;
+  if (constraints.windowType === "after_date") return `After ${constraints.windowStart ?? "selected date"} · ${days} · ${time}`;
+  if (constraints.windowType === "date_range") return `${constraints.windowStart ?? "Start"} to ${constraints.windowEnd ?? "End"} · ${days} · ${time}`;
   return `${days} · ${time}`;
 }
 

@@ -1,33 +1,14 @@
-import type { CandidateSlot, EventConstraints } from "./types";
-
-type WindowType = "next_n_days" | "specific_month" | "after_date" | "date_range";
-type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
-type TimeOfDay = "any" | "morning" | "afternoon" | "evening" | "custom";
-
-type StoredEventConstraints = Omit<EventConstraints, "month" | "timeOfDay"> & {
-  windowType?: WindowType;
-  windowStart?: string;
-  windowEnd?: string;
-  nDays?: number;
-  month?: string | number;
-  year?: number;
-  daysOfWeek?: DayOfWeek[];
-  timeOfDay?: TimeOfDay;
-  customStart?: string;
-  customEnd?: string;
-  excludeDates?: string[];
-};
+import type { CandidateSlot, DayOfWeek, EventConstraints } from "./types";
 
 const dayKeys: DayOfWeek[] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 const maxSlots = 500;
 const slotIntervalMinutes = 30;
 
 export function generateCandidateSlots(constraints: EventConstraints, durationMinutes: number): string[] {
-  const stored = constraints as StoredEventConstraints;
-  const { start, end } = resolveWindow(stored);
-  const excludedDates = new Set([...(stored.excludedDates ?? []), ...(stored.excludeDates ?? [])].map(toDateKey));
-  const allowedDays = resolveAllowedDays(stored);
-  const timeWindow = resolveTimeWindow(stored);
+  const { start, end } = resolveWindow(constraints);
+  const excludedDates = new Set([...(constraints.excludedDates ?? []), ...(constraints.excludeDates ?? [])].map(toDateKey));
+  const allowedDays = resolveAllowedDays(constraints);
+  const timeWindow = resolveTimeWindow(constraints);
   const slots: string[] = [];
 
   for (let day = startOfUtcDay(start); day.getTime() <= end.getTime() && slots.length < maxSlots; day = addDays(day, 1)) {
@@ -58,13 +39,13 @@ export function candidateIntervalsFromStarts(starts: string[], durationMinutes: 
   }));
 }
 
-function resolveWindow(constraints: StoredEventConstraints): { start: Date; end: Date } {
+function resolveWindow(constraints: EventConstraints): { start: Date; end: Date } {
   const today = startOfUtcDay(new Date());
   const windowType = constraints.windowType;
 
   if (windowType === "specific_month") {
     const year = constraints.year ?? new Date().getUTCFullYear();
-    // #19 — If month arrives as a string (e.g. from JSON), parse it and error on NaN
+    // #19 — If month arrives as a string (e.g. from a legacy record), parse it and error on NaN
     const rawMonth = constraints.month;
     let monthNum: number;
     if (typeof rawMonth === "number") {
@@ -95,11 +76,13 @@ function resolveWindow(constraints: StoredEventConstraints): { start: Date; end:
     return { start, end };
   }
 
+  // Legacy: pre-v2 records that stored afterDate directly
   if (constraints.afterDate) {
     const start = startOfUtcDay(new Date(constraints.afterDate));
     return { start, end: endOfUtcDay(addDays(start, constraints.nextDays ?? 30)) };
   }
 
+  // Legacy: pre-v2 records that stored month as a "YYYY-MM" string
   if (typeof constraints.month === "string" && constraints.month) {
     const parsed = /^\d{4}-\d{2}$/.test(constraints.month) ? constraints.month.split("-") : [];
     const year = parsed[0] ? Number(parsed[0]) : new Date().getUTCFullYear();
@@ -113,14 +96,15 @@ function resolveWindow(constraints: StoredEventConstraints): { start: Date; end:
   return { start: today, end: endOfUtcDay(addDays(today, constraints.nDays ?? constraints.nextDays ?? 30)) };
 }
 
-function resolveAllowedDays(constraints: StoredEventConstraints): Set<DayOfWeek> | null {
+function resolveAllowedDays(constraints: EventConstraints): Set<DayOfWeek> | null {
   if (constraints.daysOfWeek?.length) return new Set(constraints.daysOfWeek);
-  if (constraints.dayPreference === "weekdays") return new Set(["mon", "tue", "wed", "thu", "fri"]);
-  if (constraints.dayPreference === "weekends") return new Set(["sat", "sun"]);
+  // Legacy fallback for pre-v2 dayPreference field
+  if (constraints.dayPreference === "weekdays") return new Set<DayOfWeek>(["mon", "tue", "wed", "thu", "fri"]);
+  if (constraints.dayPreference === "weekends") return new Set<DayOfWeek>(["sat", "sun"]);
   return null;
 }
 
-function resolveTimeWindow(constraints: StoredEventConstraints): { start: string; end: string } {
+function resolveTimeWindow(constraints: EventConstraints): { start: string; end: string } {
   const timeOfDay = constraints.timeOfDay ?? "any";
   if (timeOfDay === "morning") return { start: "08:00", end: "12:00" };
   if (timeOfDay === "afternoon") return { start: "12:00", end: "17:00" };
