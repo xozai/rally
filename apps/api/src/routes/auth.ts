@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { Resend } from "resend";
 import { z } from "zod";
@@ -60,44 +60,59 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
   /**
-   * #22 — Per-email rate limit: max 3 magic-link requests per 15 minutes.
+   * #35 — Per-email rate limit: max 3 magic-link requests per email per hour
+   * (Redis key: magic_link:email:<sha256_of_email>, TTL 3600s).
+   * IP-level limit tightened to 5 req / 15 min via @fastify/rate-limit override.
+   * Always returns { ok: true } to prevent email enumeration.
    */
-  app.post("/api/auth/magic-link", async (request, reply) => {
-    const { email } = emailSchema.parse(request.body);
-    const lowerEmail = email.toLowerCase();
-
-    // Per-email rate limit (Redis-backed; silently skips if no Redis in dev)
-    if (redis) {
-      const rlKey = `rl:magic:${lowerEmail}`;
-      const count = await redis.incr(rlKey);
-      if (count === 1) {
-        // First request in this window — set TTL
-        await redis.expire(rlKey, 15 * 60);
+  app.post(
+    "/api/auth/magic-link",
+    {
+      config: {
+        rateLimit: {
+          max: 5,
+          timeWindow: 15 * 60 * 1000 // 15 minutes in ms
+        }
       }
-      if (count > 3) {
-        const ttl = await redis.ttl(rlKey);
-        reply.header("Retry-After", String(ttl > 0 ? ttl : 900));
-        return reply.code(429).send({ error: "Too many magic-link requests. Please wait before requesting another." });
+    },
+    async (request, reply) => {
+      const { email } = emailSchema.parse(request.body);
+      const lowerEmail = email.toLowerCase();
+
+      // Per-email Redis rate limit (silently absorbs over-limit requests so
+      // we never reveal whether an address exists or is being targeted).
+      if (redis) {
+        const emailHash = createHash("sha256").update(lowerEmail).digest("hex");
+        const rlKey = `magic_link:email:${emailHash}`;
+        const count = await redis.incr(rlKey);
+        if (count === 1) {
+          // First request in this window — set 1-hour TTL
+          await redis.expire(rlKey, 3600);
+        }
+        if (count > 3) {
+          // Silently succeed — do NOT send the email, do NOT reveal rate limit
+          return reply.send({ ok: true });
+        }
       }
+
+      const token = await createMagicLinkToken(lowerEmail);
+      const url = new URL("/api/auth/magic-link/verify", env.API_URL);
+      url.searchParams.set("token", token);
+
+      if (resend) {
+        await resend.emails.send({
+          from: env.RESEND_FROM,
+          to: email,
+          subject: "Sign in to Rally",
+          html: `<p>Use this link to sign in to Rally:</p><p><a href="${url.toString()}">Sign in</a></p>`
+        });
+      } else {
+        app.log.warn({ magicLink: url.toString() }, "RESEND_API_KEY missing; logging magic link for local development");
+      }
+
+      return reply.send({ ok: true });
     }
-
-    const token = await createMagicLinkToken(lowerEmail);
-    const url = new URL("/api/auth/magic-link/verify", env.API_URL);
-    url.searchParams.set("token", token);
-
-    if (resend) {
-      await resend.emails.send({
-        from: env.RESEND_FROM,
-        to: email,
-        subject: "Sign in to Rally",
-        html: `<p>Use this link to sign in to Rally:</p><p><a href="${url.toString()}">Sign in</a></p>`
-      });
-    } else {
-      app.log.warn({ magicLink: url.toString() }, "RESEND_API_KEY missing; logging magic link for local development");
-    }
-
-    return reply.send({ ok: true });
-  });
+  );
 
   app.get("/api/auth/magic-link/verify", async (request, reply) => {
     const query = z.object({ token: z.string().min(1) }).parse(request.query);
