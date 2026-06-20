@@ -3,7 +3,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { CalendarPlus } from "lucide-react";
 import Link from "next/link";
-import { Badge } from "../../components/ui/badge";
+import { StatusBadge } from "../../components/StatusBadge";
+import { readError } from "../../lib/utils";
 import { Card } from "../../components/ui/card";
 
 const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -82,21 +83,8 @@ async function fetchEvents(): Promise<{ events: DashboardEvent[] }> {
   return response.json() as Promise<{ events: DashboardEvent[] }>;
 }
 
-function StatusBadge({ status }: { status: DashboardEvent["status"] }) {
-  const color = status === "CONFIRMED"
-    ? "border-primary/30 bg-primary/10 text-primary"
-    : status === "VOTING"
-      ? "border-amber-300 bg-amber-50 text-amber-800"
-      : "border-border bg-white text-foreground";
-
-  return <Badge className={color}>{status}</Badge>;
-}
 
 function formatDate(value: string): string {
   return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(new Date(value));
 }
 
-async function readError(response: Response): Promise<string> {
-  const body = await response.json().catch(() => null) as { error?: string } | null;
-  return body?.error ?? "Request failed";
-}

@@ -9,6 +9,8 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Select } from "../../../components/ui/select";
 import { Textarea } from "../../../components/ui/textarea";
+import { durationLabel } from '../../../lib/join';
+import { readError } from '../../../lib/utils';
 
 type WindowType = "next_n_days" | "specific_month" | "after_date" | "date_range";
 type DayOfWeek = "mon" | "tue" | "wed" | "thu" | "fri" | "sat" | "sun";
@@ -330,9 +332,6 @@ function WindowFields({ constraints, updateConstraints }: { constraints: EventCo
   );
 }
 
-function durationLabel(minutes: number): string {
-  return durations.find((duration) => duration.value === minutes)?.label ?? `${minutes} min`;
-}
 
 function windowSummary(constraints: EventConstraintsInput): string {
   if (constraints.windowType === "next_n_days") return `Next ${constraints.nDays ?? 30} days`;
@@ -341,7 +340,3 @@ function windowSummary(constraints: EventConstraintsInput): string {
   return `${constraints.windowStart ?? "Start"} to ${constraints.windowEnd ?? "End"}`;
 }
 
-async function readError(response: Response): Promise<string> {
-  const body = await response.json().catch(() => null) as { error?: string } | null;
-  return body?.error ?? "Request failed";
-}
