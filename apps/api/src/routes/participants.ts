@@ -4,6 +4,13 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { enqueueRecompute } from "../jobs/queues";
 import { prisma } from "../lib/prisma";
+import {
+  AvailabilitySchema,
+  EventConstraintsSchema,
+  PreferencesSchema,
+  VotesSchema,
+  parseJsonColumn,
+} from "../lib/schemas";
 import { notifyEventUpdated, notifyParticipantResponded } from "../realtime";
 
 const intervalSchema = z.object({
@@ -128,8 +135,13 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "Suggestion not found" });
     }
 
-    const votes = typeof suggestion.votes === "object" && suggestion.votes ? suggestion.votes as Record<string, string> : {};
-    votes[participant.id] = vote;
+    const existingVotes = parseJsonColumn(
+      suggestion.votes,
+      VotesSchema,
+      {},
+      `suggestion.votes[${suggestionId}]`
+    );
+    const votes: Record<string, string> = { ...existingVotes, [participant.id]: vote };
 
     const updated = await prisma.suggestion.update({
       where: { id: suggestionId },
@@ -231,8 +243,18 @@ function serializeGuestParticipant(participant: GuestParticipantRecord) {
     eventId: participant.eventId,
     email: participant.email,
     name: participant.name,
-    availability: jsonArray<TimeInterval>(participant.availability),
-    preferences: jsonArray<PreferenceBlock>(participant.preferences),
+    availability: parseJsonColumn(
+      participant.availability,
+      AvailabilitySchema,
+      [] as TimeInterval[],
+      `participant.availability[${participant.id}]`
+    ),
+    preferences: parseJsonColumn(
+      participant.preferences,
+      PreferencesSchema,
+      [] as PreferenceBlock[],
+      `participant.preferences[${participant.id}]`
+    ),
     responded: participant.responded,
     rsvp: participant.rsvp,
     createdAt: participant.createdAt.toISOString(),
@@ -241,7 +263,12 @@ function serializeGuestParticipant(participant: GuestParticipantRecord) {
       title: participant.event.title,
       description: participant.event.description,
       duration: participant.event.duration,
-      constraints: participant.event.constraints,
+      constraints: parseJsonColumn(
+        participant.event.constraints,
+        EventConstraintsSchema,
+        {},
+        `event.constraints[${participant.event.id}]`
+      ),
       status: participant.event.status,
       finalSlot: participant.event.finalSlot?.toISOString() ?? null,
       responseCount: participant.event.participants.filter((item) => item.responded).length,
@@ -259,8 +286,18 @@ function serializePrivateParticipant(participant: ParticipantRecord) {
     userId: participant.userId,
     email: participant.email,
     name: participant.name,
-    availability: jsonArray<TimeInterval>(participant.availability),
-    preferences: jsonArray<PreferenceBlock>(participant.preferences),
+    availability: parseJsonColumn(
+      participant.availability,
+      AvailabilitySchema,
+      [] as TimeInterval[],
+      `participant.availability[${participant.id}]`
+    ),
+    preferences: parseJsonColumn(
+      participant.preferences,
+      PreferencesSchema,
+      [] as PreferenceBlock[],
+      `participant.preferences[${participant.id}]`
+    ),
     responded: participant.responded,
     rsvp: participant.rsvp,
     createdAt: participant.createdAt.toISOString()
@@ -275,9 +312,6 @@ function hasPreferences(value: Prisma.JsonValue): boolean {
   return Array.isArray(value) && value.length > 0;
 }
 
-function jsonArray<T>(value: Prisma.JsonValue): T[] {
-  return Array.isArray(value) ? value as unknown as T[] : [];
-}
 
 function serializeSuggestion(suggestion: SuggestionRecord) {
   return {
