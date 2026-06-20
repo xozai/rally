@@ -47,6 +47,7 @@ model Participant {
   preferences  Json
   responded    Boolean  @default(false)
   rsvp         String?
+  expiresAt    DateTime?
   createdAt    DateTime @default(now())
 }
 
