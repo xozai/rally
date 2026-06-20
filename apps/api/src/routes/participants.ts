@@ -53,6 +53,9 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!participant) return reply.code(404).send({ error: "Invite not found" });
+    if (participant.expiresAt && participant.expiresAt < new Date()) {
+      return reply.code(410).send({ error: "Invite link has expired" });
+    }
     return reply.send({ participant: serializeGuestParticipant(participant) });
   });
 
@@ -74,6 +77,9 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
     // #30 — enforce event expiry
     if (existing.event.expiresAt && existing.event.expiresAt < new Date()) {
       return reply.code(410).send({ error: "This Rally has expired" });
+    }
+    if (existing.expiresAt && existing.expiresAt < new Date()) {
+      return reply.code(410).send({ error: "Invite link has expired" });
     }
 
     const participant = await prisma.participant.update({
@@ -97,6 +103,9 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
     const { preferences } = parsedBody.data;
     const existing = await prisma.participant.findUnique({ where: { token } });
     if (!existing) return reply.code(404).send({ error: "Invite not found" });
+    if (existing.expiresAt && existing.expiresAt < new Date()) {
+      return reply.code(410).send({ error: "Invite link has expired" });
+    }
 
     const participant = await prisma.participant.update({
       where: { token },
@@ -122,6 +131,9 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
     const { suggestionId, vote } = parsedBody.data;
     const participant = await prisma.participant.findUnique({ where: { token } });
     if (!participant) return reply.code(404).send({ error: "Invite not found" });
+    if (participant.expiresAt && participant.expiresAt < new Date()) {
+      return reply.code(410).send({ error: "Invite link has expired" });
+    }
 
     const suggestion = await prisma.suggestion.findUnique({ where: { id: suggestionId } });
     if (!suggestion || suggestion.eventId !== participant.eventId) {
@@ -152,6 +164,9 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
     const { rsvp } = parsedBody.data;
     const existing = await prisma.participant.findUnique({ where: { token } });
     if (!existing) return reply.code(404).send({ error: "Invite not found" });
+    if (existing.expiresAt && existing.expiresAt < new Date()) {
+      return reply.code(410).send({ error: "Invite link has expired" });
+    }
 
     const participant = await prisma.participant.update({
       where: { token },
@@ -196,6 +211,7 @@ type ParticipantRecord = {
   preferences: Prisma.JsonValue;
   responded: boolean;
   rsvp: string | null;
+  expiresAt: Date | null;
   createdAt: Date;
 };
 
