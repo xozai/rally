@@ -38,7 +38,8 @@ const inviteSchema = z.object({
 });
 
 const confirmSchema = z.object({
-  finalSlot: z.string().datetime()
+  finalSlot: z.string().datetime(),
+  sendInvites: z.boolean().optional().default(true)
 });
 
 export async function eventRoutes(app: FastifyInstance): Promise<void> {
@@ -179,7 +180,7 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     if (!parsedBody.success) return reply.code(400).send({ error: parsedBody.error.issues[0]?.message ?? "Invalid confirmation input" });
 
     const { id } = parsedParams.data;
-    const { finalSlot } = parsedBody.data;
+    const { finalSlot, sendInvites } = parsedBody.data;
     const existing = await prisma.event.findFirst({
       where: { id, organizerId: session.userId },
       include: { participants: true }
@@ -193,13 +194,15 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
 
     const confirmedSlot = formatDisplayDate(event.finalSlot);
     const icsUrl = new URL(`/api/events/${event.id}/ics`, env.API_URL).toString();
-    void Promise.all(existing.participants.map((participant) => sendEventConfirmedEmail(
-      participant.email,
-      participant.name ?? participant.email,
-      event.title,
-      confirmedSlot,
-      icsUrl
-    ))).catch((error) => request.log.error({ error, eventId: event.id }, "Failed to send confirmation emails"));
+    if (sendInvites) {
+      void Promise.all(existing.participants.map((participant) => sendEventConfirmedEmail(
+        participant.email,
+        participant.name ?? participant.email,
+        event.title,
+        confirmedSlot,
+        icsUrl
+      ))).catch((error) => request.log.error({ error, eventId: event.id }, "Failed to send confirmation emails"));
+    }
 
     notifyEventUpdated(event.id, { status: event.status });
     return reply.send({ event: serializeEvent(event) });
