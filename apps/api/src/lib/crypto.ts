@@ -1,4 +1,4 @@
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, createHash, createHmac, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
 import { env } from "../env";
 
 const algorithm = "aes-256-gcm";
@@ -28,4 +28,23 @@ export function decryptJson<T>(payload: { iv: string; authTag: string; data: str
   ]);
 
   return JSON.parse(decrypted.toString("utf8")) as T;
+}
+
+/**
+ * Generate a stateless HMAC-SHA256 download token for a confirmed event's ICS file.
+ * The token is HMAC-SHA256(eventId, JWT_SECRET) encoded as base64url.
+ */
+export function generateIcsToken(eventId: string): string {
+  return createHmac("sha256", env.JWT_SECRET).update(eventId).digest("base64url");
+}
+
+/**
+ * Verify an ICS download token using a constant-time comparison to prevent
+ * timing-based attacks.
+ */
+export function verifyIcsToken(eventId: string, token: string): boolean {
+  const expected = generateIcsToken(eventId);
+  // Lengths must match before timingSafeEqual (it throws on mismatched lengths)
+  if (Buffer.byteLength(expected) !== Buffer.byteLength(token)) return false;
+  return timingSafeEqual(Buffer.from(expected), Buffer.from(token));
 }
