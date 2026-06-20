@@ -31,7 +31,7 @@ export async function createMagicLinkToken(email: string): Promise<string> {
 }
 
 export async function verifyMagicLinkToken(token: string): Promise<string> {
-  const { payload } = await jwtVerify(token, secret);
+  const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
   if (payload.purpose !== "magic_link" || typeof payload.email !== "string") {
     throw new Error("Invalid magic link token");
   }
@@ -65,7 +65,7 @@ export async function getSession(request: FastifyRequest): Promise<SessionClaims
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
     if (!payload.sub || typeof payload.email !== "string") return null;
     return { userId: payload.sub, email: payload.email };
   } catch {

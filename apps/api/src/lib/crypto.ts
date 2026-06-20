@@ -1,10 +1,10 @@
-import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from "node:crypto";
 import { env } from "../env";
 
 const algorithm = "aes-256-gcm";
 
 function key(): Buffer {
-  return createHash("sha256").update(env.TOKEN_ENCRYPTION_KEY).digest();
+  return Buffer.from(hkdfSync("sha256", env.TOKEN_ENCRYPTION_KEY, "rally-token-encryption", "", 32));
 }
 
 export function encryptJson(value: unknown): { iv: string; authTag: string; data: string } {
