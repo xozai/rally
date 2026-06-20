@@ -8,13 +8,10 @@ import { Badge } from "../../../../components/ui/badge";
 import { Button } from "../../../../components/ui/button";
 import { Card } from "../../../../components/ui/card";
 import { apiBaseUrl, formatSlot, type JoinParticipant, readError } from "../../../../lib/join";
+import { websocketBaseUrl, parseRealtimeMessage, type RealtimeMessage } from "../../../../lib/utils";
 
 type VoteValue = "yes" | "maybe" | "no";
 
-type RealtimeMessage = {
-  type: "connected" | "event_updated" | "participant_responded";
-  eventId: string;
-};
 
 export default function VotePage({ params }: { params: { token: string } }) {
   const queryClient = useQueryClient();
@@ -149,19 +146,4 @@ async function fetchParticipant(token: string): Promise<{ participant: JoinParti
   return response.json() as Promise<{ participant: JoinParticipant }>;
 }
 
-function websocketBaseUrl(): string {
-  const base = apiBaseUrl || window.location.origin;
-  return base.replace(/^http/, "ws");
-}
 
-function parseRealtimeMessage(data: unknown): RealtimeMessage | null {
-  if (typeof data !== "string") return null;
-  try {
-    const parsed = JSON.parse(data) as Partial<RealtimeMessage>;
-    if (typeof parsed.type !== "string" || typeof parsed.eventId !== "string") return null;
-    if (!["connected", "event_updated", "participant_responded"].includes(parsed.type)) return null;
-    return parsed as RealtimeMessage;
-  } catch {
-    return null;
-  }
-}

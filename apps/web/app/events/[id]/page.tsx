@@ -5,6 +5,9 @@ import { CheckCircle2, Clipboard, Clock, Vote, X } from "lucide-react";
 import { useParams } from "next/navigation";
 import * as React from "react";
 import { Badge } from "../../../components/ui/badge";
+import { StatusBadge } from "../../../components/StatusBadge";
+import { durationLabel } from "../../../lib/join";
+import { readError, websocketBaseUrl, parseRealtimeMessage, type RealtimeMessage } from "../../../lib/utils";
 import { Button } from "../../../components/ui/button";
 import { Card } from "../../../components/ui/card";
 import { Progress } from "../../../components/ui/progress";
@@ -60,10 +63,6 @@ interface SuggestionResponse {
   votes?: Record<string, "yes" | "no" | "maybe"> | null;
 }
 
-type RealtimeMessage = {
-  type: "connected" | "event_updated" | "participant_responded";
-  eventId: string;
-};
 
 export default function EventPage() {
   const params = useParams<{ id: string }>();
@@ -354,15 +353,6 @@ async function fetchEvent(id: string): Promise<{ event: OrganizerEvent }> {
   return response.json() as Promise<{ event: OrganizerEvent }>;
 }
 
-function StatusBadge({ status }: { status: OrganizerEvent["status"] }) {
-  const color = status === "CONFIRMED"
-    ? "border-primary/30 bg-primary/10 text-primary"
-    : status === "VOTING"
-      ? "border-amber-300 bg-amber-50 text-amber-800"
-      : "border-border bg-white text-foreground";
-
-  return <Badge className={color}>{status}</Badge>;
-}
 
 function ParticipantChip({ participant, state }: { participant: ParticipantSummary; state: "preferred" | "free" | "unavailable" }) {
   const color = state === "preferred"
@@ -419,14 +409,6 @@ function constraintsSummary(constraints: EventConstraintsResponse): string {
   return `${days} · ${time}`;
 }
 
-function durationLabel(minutes: number): string {
-  if (minutes === 30) return "30 min";
-  if (minutes === 60) return "1 hr";
-  if (minutes === 90) return "1.5 hr";
-  if (minutes === 240) return "Half-day";
-  if (minutes === 480) return "Full-day";
-  return minutes % 60 === 0 ? `${minutes / 60} hr` : `${minutes} min`;
-}
 
 function formatSlotLong(start: string, duration: number): string {
   const startDate = new Date(start);
@@ -437,24 +419,5 @@ function formatSlotLong(start: string, duration: number): string {
   return `${date} · ${time} - ${end}`;
 }
 
-function websocketBaseUrl(): string {
-  const base = apiBaseUrl || window.location.origin;
-  return base.replace(/^http/, "ws");
-}
 
-function parseRealtimeMessage(data: unknown): RealtimeMessage | null {
-  if (typeof data !== "string") return null;
-  try {
-    const parsed = JSON.parse(data) as Partial<RealtimeMessage>;
-    if (typeof parsed.type !== "string" || typeof parsed.eventId !== "string") return null;
-    if (!["connected", "event_updated", "participant_responded"].includes(parsed.type)) return null;
-    return parsed as RealtimeMessage;
-  } catch {
-    return null;
-  }
-}
 
-async function readError(response: Response): Promise<string> {
-  const body = await response.json().catch(() => null) as { error?: string } | null;
-  return body?.error ?? "Request failed";
-}
