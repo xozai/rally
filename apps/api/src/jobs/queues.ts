@@ -4,6 +4,7 @@ import { candidateIntervalsFromStarts, generateCandidateSlots, rankSuggestions }
 import { Queue, Worker } from "bullmq";
 import { env } from "../env";
 import { prisma } from "../lib/prisma";
+import { AvailabilitySchema, EventConstraintsSchema, PreferencesSchema, parseJsonColumn } from "../lib/schemas";
 import { notifyEventUpdated } from "../realtime";
 
 export const calendarSyncQueue = env.REDIS_URL
@@ -59,12 +60,28 @@ export async function processSuggestionRecompute(eventId: string): Promise<void>
 
   if (!event) return;
 
-  const candidateStarts = generateCandidateSlots(event.constraints as unknown as Parameters<typeof generateCandidateSlots>[0], event.duration);
+  const validatedConstraints = parseJsonColumn(
+    event.constraints,
+    EventConstraintsSchema,
+    {},
+    `event.constraints[${eventId}]`
+  );
+  const candidateStarts = generateCandidateSlots(validatedConstraints as unknown as Parameters<typeof generateCandidateSlots>[0], event.duration);
   const candidates = candidateIntervalsFromStarts(candidateStarts, event.duration);
   const participants: ScoringParticipant[] = event.participants.map((participant) => ({
     id: participant.id,
-    availability: jsonArray(participant.availability),
-    preferences: jsonArray(participant.preferences)
+    availability: parseJsonColumn(
+      participant.availability,
+      AvailabilitySchema,
+      [],
+      `participant.availability[${participant.id}]`
+    ),
+    preferences: parseJsonColumn(
+      participant.preferences,
+      PreferencesSchema,
+      [],
+      `participant.preferences[${participant.id}]`
+    )
   }));
 
   const ranked = rankSuggestions(candidates, participants, {
@@ -90,9 +107,6 @@ export async function processSuggestionRecompute(eventId: string): Promise<void>
   notifyEventUpdated(event.id, { reason: "suggestions_recomputed" });
 }
 
-function jsonArray<T>(value: Prisma.JsonValue): T[] {
-  return Array.isArray(value) ? value as unknown as T[] : [];
-}
 
 function readAsap(value: Prisma.JsonValue): boolean {
   return typeof value === "object" && value !== null && !Array.isArray(value) && "asap" in value && value.asap === true;
