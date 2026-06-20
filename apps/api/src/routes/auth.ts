@@ -190,7 +190,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!tokenResponse.ok) {
-      request.log.error({ body: await tokenResponse.text() }, "Google token exchange failed");
+      const errBody1 = await tokenResponse.json().catch(() => ({}));
+      request.log.error({ status: tokenResponse.status, error: (errBody1 as any).error }, "Google token exchange failed");
       return reply.code(400).send({ error: "Google token exchange failed" });
     }
 
@@ -200,7 +201,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!profileResponse.ok) {
-      request.log.error({ body: await profileResponse.text() }, "Google profile fetch failed");
+      const errBody2 = await profileResponse.json().catch(() => ({}));
+      request.log.error({ status: profileResponse.status, error: (errBody2 as any).error }, "Google profile fetch failed");
       return reply.code(400).send({ error: "Google profile fetch failed" });
     }
 
@@ -272,7 +274,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!tokenResponse.ok) {
-      request.log.error({ body: await tokenResponse.text() }, "Google calendar token exchange failed");
+      const errBody3 = await tokenResponse.json().catch(() => ({}));
+      request.log.error({ status: tokenResponse.status, error: (errBody3 as any).error }, "Google calendar token exchange failed");
       return reply.code(400).send({ error: "Google token exchange failed" });
     }
 
@@ -339,7 +342,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!tokenResponse.ok) {
-      request.log.error({ body: await tokenResponse.text() }, "Microsoft token exchange failed");
+      const errBody4 = await tokenResponse.json().catch(() => ({}));
+      request.log.error({ status: tokenResponse.status, error: (errBody4 as any).error }, "Microsoft token exchange failed");
       return reply.code(400).send({ error: "Microsoft token exchange failed" });
     }
 
