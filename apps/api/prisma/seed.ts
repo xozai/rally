@@ -20,12 +20,10 @@ async function main() {
       organizerId: user.id,
       duration: 120,
       constraints: {
-        nextDays: 14,
-        dayPreference: "weekends",
-        timeOfDay: "afternoon",
-        preferredSlots: [],
-        excludedDates: [],
-        asap: true
+        windowType: "next_n_days",
+        nDays: 14,
+        daysOfWeek: ["sat", "sun"],
+        timeOfDay: "afternoon"
       } satisfies Prisma.InputJsonValue
     }
   });
