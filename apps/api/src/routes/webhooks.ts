@@ -1,15 +1,14 @@
 import type { FastifyInstance } from "fastify";
+import { Webhook } from "svix";
 import { z } from "zod";
+import { env } from "../env";
 import { prisma } from "../lib/prisma";
 
 /**
  * POST /api/webhooks/resend
  *
- * Receives open/click tracking events from Resend and updates the
- * participant's emailStatus accordingly.  No authentication is required on
- * this endpoint — Resend calls it from the internet.  We rely on the fact
- * that the payload only contains Resend-controlled data and that we never
- * expose sensitive information in the response.
+ * Receives signed open/click tracking events from Resend and updates the
+ * participant's emailStatus accordingly.
  *
  * Resend webhook event shape (simplified):
  * {
@@ -26,10 +25,42 @@ const resendWebhookSchema = z.object({
 });
 
 export async function webhookRoutes(app: FastifyInstance): Promise<void> {
+  app.removeContentTypeParser("application/json");
+  app.addContentTypeParser("application/json", { parseAs: "buffer" }, (_request, body, done) => {
+    done(null, body);
+  });
+
   app.post("/api/webhooks/resend", {
     config: { rateLimit: { max: 500, timeWindow: "1 minute" } }
   }, async (request, reply) => {
-    const parsed = resendWebhookSchema.safeParse(request.body);
+    if (!env.RESEND_WEBHOOK_SECRET) {
+      return reply.code(500).send({ error: "Resend webhook secret is not configured" });
+    }
+
+    const rawBody = request.body;
+    if (!Buffer.isBuffer(rawBody)) {
+      return reply.code(400).send({ error: "Invalid webhook payload" });
+    }
+
+    const wh = new Webhook(env.RESEND_WEBHOOK_SECRET);
+    try {
+      wh.verify(rawBody, {
+        "svix-id": request.headers["svix-id"] as string,
+        "svix-timestamp": request.headers["svix-timestamp"] as string,
+        "svix-signature": request.headers["svix-signature"] as string
+      });
+    } catch {
+      return reply.code(400).send({ error: "Invalid webhook signature" });
+    }
+
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody.toString("utf8"));
+    } catch {
+      return reply.code(400).send({ error: "Invalid webhook payload" });
+    }
+
+    const parsed = resendWebhookSchema.safeParse(body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "Invalid webhook payload" });
     }

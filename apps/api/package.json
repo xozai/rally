@@ -23,10 +23,11 @@
     "@prisma/client": "^7.8.0",
     "@rally/shared": "*",
     "bullmq": "^5.9.3",
-    "ioredis": "^5.4.1",
     "fastify": "^4.28.1",
+    "ioredis": "^5.4.1",
     "jose": "^6.2.3",
     "resend": "^4.0.0",
+    "svix": "^1.96.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
