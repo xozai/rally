@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from "node:crypto";
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import type { FastifyInstance } from "fastify";
 import { Resend } from "resend";
 import { z } from "zod";
@@ -45,10 +45,10 @@ function decodeSignedOAuthState(value: string): z.infer<typeof stateSchema> {
   const payload = value.slice(0, dot);
   const sig = value.slice(dot + 1);
   const expected = hmacState(payload);
-  // Constant-time comparison is ideal but crypto.timingSafeEqual needs Buffers:
+  // Lengths must match before timingSafeEqual (it throws on mismatched lengths)
   const sigBuf = Buffer.from(sig, "hex");
   const expBuf = Buffer.from(expected, "hex");
-  if (sigBuf.length !== expBuf.length || !sigBuf.equals(expBuf)) {
+  if (sigBuf.length !== expBuf.length || !timingSafeEqual(sigBuf, expBuf)) {
     throw new Error("OAuth state signature mismatch");
   }
   return stateSchema.parse(JSON.parse(Buffer.from(payload, "base64url").toString("utf8")));
