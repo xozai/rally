@@ -435,8 +435,6 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     const existing = await prisma.event.findFirst({ where: { id, organizerId: session.userId } });
     if (!existing) return reply.code(404).send({ error: "Event not found" });
 
-    await prisma.suggestion.deleteMany({ where: { eventId: id } });
-    await prisma.participant.deleteMany({ where: { eventId: id } });
     await prisma.event.delete({ where: { id } });
 
     return reply.code(204).send();
