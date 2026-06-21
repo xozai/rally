@@ -231,7 +231,7 @@ All variables are documented in `.env.example`. The table below summarises each 
 - `TOKEN_ENCRYPTION_KEY` — Required — ≥ 32-character key for AES-256-GCM encryption of OAuth tokens at rest (derived via HKDF)
 - `RESEND_API_KEY` — Required (prod) — Resend API key for transactional email
 - `RESEND_FROM` — Required (prod) — Sender address, e.g. `Rally <hello@rally.app>`
-- `RESEND_WEBHOOK_SECRET` — Optional — Resend webhook signing secret for verifying `email.opened` / `email.clicked` events
+- `RESEND_WEBHOOK_SECRET` — Required (if email tracking enabled) — Resend webhook signing secret; all incoming webhook requests are now verified with Svix — unsigned requests are rejected
 - `GOOGLE_CLIENT_ID` — Optional — Google OAuth client ID (enables Google Calendar import)
 - `GOOGLE_CLIENT_SECRET` — Optional — Google OAuth client secret
 - `GOOGLE_REDIRECT_URI` — Optional — Google OAuth callback URL
@@ -261,6 +261,9 @@ Rally follows defence-in-depth practices:
 - **Signed ICS tokens** — `GET /api/events/:id/ics` requires either a valid session cookie or a HMAC-SHA256 signed `?token=` query parameter
 - **Invite token expiry** — participant invite tokens expire after 30 days; organisers can rotate and resend via `POST /api/events/:id/participants/:participantId/resend`
 - **Zod validation on all DB reads** — JSON columns (`availability`, `preferences`, `constraints`, `votes`, `breakdown`) are validated at runtime before entering business logic
+- **Resend webhook signature verification** — `POST /api/webhooks/resend` verifies Svix signatures (`svix-id`, `svix-timestamp`, `svix-signature`) before processing any payload; unsigned requests are rejected with `400`
+- **Constant-time OAuth HMAC comparison** — OAuth state signatures are compared with `crypto.timingSafeEqual` to prevent timing-based attacks
+- **Event expiry enforced on all participant endpoints** — both the availability and preferences submission endpoints check event-level expiry (in addition to per-invite expiry), returning `410 Gone` for expired rallies
 
 ---
 
@@ -274,7 +277,7 @@ The summary:
 2. **Upstash** — create a Redis database, copy `REDIS_URL`
 3. **Railway** — `railway link && railway up --service api --detach` with all API env vars set
 4. **Vercel** — `cd apps/web && vercel --prod` with `NEXT_PUBLIC_API_URL` pointing to Railway
-5. **Resend webhooks** *(optional)* — in the Resend dashboard, add a webhook pointing to `POST https://api.rally.app/api/webhooks/resend` for `email.opened` and `email.clicked` events; set `RESEND_WEBHOOK_SECRET` to the signing secret
+5. **Resend webhooks** *(required for email tracking)* — in the Resend dashboard, add a webhook pointing to `POST https://api.rally.app/api/webhooks/resend` for `email.opened` and `email.clicked` events; set `RESEND_WEBHOOK_SECRET` to the signing secret — the endpoint now verifies Svix signatures and will reject unsigned requests
 
 ### Required GitHub Secrets
 
