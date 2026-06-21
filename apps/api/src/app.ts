@@ -11,6 +11,7 @@ import { eventRoutes } from "./routes/events";
 import { healthRoutes } from "./routes/health";
 import { participantRoutes } from "./routes/participants";
 import { suggestionRoutes } from "./routes/suggestions";
+import { webhookRoutes } from "./routes/webhooks";
 
 export async function buildApp() {
   const app = Fastify({ logger: true });
@@ -29,6 +30,7 @@ export async function buildApp() {
   await app.register(participantRoutes);
   await app.register(calendarRoutes);
   await app.register(suggestionRoutes);
+  await app.register(webhookRoutes);
 
   // Start the BullMQ worker that processes suggestion-recompute jobs (#10)
   setupWorker();

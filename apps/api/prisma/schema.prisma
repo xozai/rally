@@ -34,20 +34,22 @@ model Event {
 }
 
 model Participant {
-  id           String   @id @default(cuid())
-  eventId      String
-  event        Event    @relation(fields: [eventId], references: [id])
-  userId       String?
-  user         User?    @relation(fields: [userId], references: [id])
-  email        String
-  name         String?
-  token        String   @unique
-  availability Json
-  preferences  Json
-  responded    Boolean  @default(false)
-  rsvp         String?
-  expiresAt    DateTime?
-  createdAt    DateTime @default(now())
+  id                  String       @id @default(cuid())
+  eventId             String
+  event               Event        @relation(fields: [eventId], references: [id])
+  userId              String?
+  user                User?        @relation(fields: [userId], references: [id])
+  email               String
+  name                String?
+  token               String       @unique
+  availability        Json
+  preferences         Json
+  responded           Boolean      @default(false)
+  rsvp                String?
+  lastInviteEmailId   String?
+  emailStatus         EmailStatus  @default(SENT)
+  expiresAt           DateTime?
+  createdAt           DateTime     @default(now())
 }
 
 model Suggestion {
@@ -67,4 +69,10 @@ enum EventStatus {
   VOTING
   CONFIRMED
   CANCELLED
+}
+
+enum EmailStatus {
+  SENT
+  OPENED
+  CLICKED
 }
