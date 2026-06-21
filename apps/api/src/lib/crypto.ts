@@ -32,10 +32,10 @@ export function decryptJson<T>(payload: { iv: string; authTag: string; data: str
 
 /**
  * Generate a stateless HMAC-SHA256 download token for a confirmed event's ICS file.
- * The token is HMAC-SHA256(eventId, JWT_SECRET) encoded as base64url.
+ * The token is HMAC-SHA256(eventId, TOKEN_ENCRYPTION_KEY) encoded as base64url.
  */
 export function generateIcsToken(eventId: string): string {
-  return createHmac("sha256", env.JWT_SECRET).update(eventId).digest("base64url");
+  return createHmac("sha256", env.TOKEN_ENCRYPTION_KEY).update(eventId).digest("base64url");
 }
 
 /**
