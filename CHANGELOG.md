@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/xozai/rally/compare/v1.1.0...v1.1.1) (2026-06-21)
+
+
+### Bug Fixes
+
+* use TOKEN_ENCRYPTION_KEY for ICS token HMAC instead of JWT_SECRET ([#73](https://github.com/xozai/rally/issues/73)) ([#82](https://github.com/xozai/rally/issues/82)) ([4a333b4](https://github.com/xozai/rally/commit/4a333b4fa67b937a49dec6be68da2a8d3ffc820d))
+
 ## [1.1.0](https://github.com/xozai/rally/compare/v1.0.0...v1.1.0) (2026-06-21)
 
 
