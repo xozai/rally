@@ -170,6 +170,73 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(ics);
   });
 
+
+  // Public status endpoint — no auth required (#37)
+  app.get("/api/events/:id/status", async (request, reply) => {
+    const parsedParams = z.object({ id: z.string() }).safeParse(request.params);
+    if (!parsedParams.success) return reply.code(400).send({ error: "Invalid event id" });
+
+    const { id } = parsedParams.data;
+    const event = await prisma.event.findUnique({
+      where: { id },
+      include: {
+        participants: {
+          select: {
+            responded: true,
+            availability: true
+          }
+        }
+      }
+    });
+
+    if (!event) return reply.code(404).send({ error: "Event not found" });
+
+    if (event.expiresAt && event.expiresAt < new Date()) {
+      return reply.code(410).send({ error: "This Rally has expired" });
+    }
+
+    const totalParticipants = event.participants.length;
+    const respondedCount = event.participants.filter((p: { responded: boolean; availability: unknown }) => p.responded).length;
+
+    // Build aggregate heatmap: sum availability across all responded participants
+    // availability is stored as TimeInterval[] (array of {start, end})
+    const slotScores = new Map<string, number>();
+    const slotMinutes = 30;
+
+    for (const participant of event.participants) {
+      if (!participant.responded) continue;
+      const intervals = participant.availability as Array<{ start: string; end: string }>;
+      if (!Array.isArray(intervals)) continue;
+
+      for (const interval of intervals) {
+        let cursor = new Date(interval.start).getTime();
+        const endMs = new Date(interval.end).getTime();
+        while (cursor < endMs) {
+          const slot = new Date(cursor).toISOString();
+          slotScores.set(slot, (slotScores.get(slot) ?? 0) + 1);
+          cursor += slotMinutes * 60_000;
+        }
+      }
+    }
+
+    // Normalize 0–1 based on respondedCount
+    const maxScore = respondedCount > 0 ? respondedCount : 1;
+    const aggregateHeatmap = Array.from(slotScores.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([slot, score]) => ({ slot, score: score / maxScore }));
+
+    return reply.send({
+      eventId: event.id,
+      title: event.title,
+      status: event.status,
+      duration: event.duration,
+      constraints: event.constraints,
+      totalParticipants,
+      respondedCount,
+      aggregateHeatmap
+    });
+  });
+
   app.patch("/api/events/:id/confirm", async (request, reply) => {
     const session = await requireUser(request, reply);
     if (!session) return;
