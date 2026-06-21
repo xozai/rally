@@ -11,6 +11,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string().min(32),
   TOKEN_ENCRYPTION_KEY: z.string().min(32),
   RESEND_API_KEY: z.string().optional(),
+  RESEND_WEBHOOK_SECRET: z.string().optional(),
   RESEND_FROM: z.string().default("Rally <hello@example.com>"),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),

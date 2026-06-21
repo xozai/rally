@@ -3,16 +3,21 @@ import { Resend } from "resend";
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const from = process.env.RESEND_FROM ?? process.env.FROM_EMAIL ?? "Rally <noreply@rally.app>";
 
+/**
+ * Send an invite email to a participant and return the Resend message ID
+ * (if available). Returns undefined when Resend is not configured or when the
+ * send call does not return an id (#36).
+ */
 export async function sendInviteEmail(
   to: string,
   name: string,
   eventTitle: string,
   organizerName: string,
   inviteUrl: string
-): Promise<void> {
-  if (!resend) return;
+): Promise<string | undefined> {
+  if (!resend) return undefined;
 
-  await resend.emails.send({
+  const result = await resend.emails.send({
     from,
     to,
     subject: `${organizerName} invited you to ${eventTitle}`,
@@ -20,8 +25,17 @@ export async function sendInviteEmail(
       paragraph(`Hi ${escapeHtml(name)},`),
       paragraph(`${escapeHtml(organizerName)} invited you to help find a time for <strong>${escapeHtml(eventTitle)}</strong>.`),
       ctaButton("Share your availability", inviteUrl)
-    ].join(""))
+    ].join("")),
+    // Enable Resend's built-in open + click tracking so webhook events fire
+    headers: {
+      "X-Entity-Ref-ID": inviteUrl
+    },
+    tags: [
+      { name: "type", value: "invite" }
+    ]
   });
+
+  return result.data?.id ?? undefined;
 }
 
 export async function sendMagicLinkEmail(to: string, magicLink: string): Promise<void> {

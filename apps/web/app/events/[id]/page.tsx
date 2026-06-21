@@ -45,6 +45,7 @@ interface ParticipantSummary {
   email: string;
   name: string | null;
   responded: boolean;
+  emailStatus: "SENT" | "OPENED" | "CLICKED";
 }
 
 interface SuggestionResponse {
@@ -218,7 +219,10 @@ export default function EventPage() {
                         <p className="truncate font-medium">{participant.name ?? participant.email}</p>
                         {participant.name ? <p className="truncate text-xs text-muted-foreground">{participant.email}</p> : null}
                       </div>
-                      {participant.responded ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-muted-foreground" />}
+                      <div className="flex shrink-0 items-center gap-2">
+                        <EmailStatusBadge status={participant.emailStatus} />
+                        {participant.responded ? <CheckCircle2 className="h-5 w-5 text-primary" /> : <Clock className="h-5 w-5 text-muted-foreground" />}
+                      </div>
                     </div>
                   ))}
                   {event.participants.length === 0 ? <p className="text-sm text-muted-foreground">No participants invited yet.</p> : null}
@@ -353,6 +357,28 @@ async function fetchEvent(id: string): Promise<{ event: OrganizerEvent }> {
   return response.json() as Promise<{ event: OrganizerEvent }>;
 }
 
+
+function EmailStatusBadge({ status }: { status: "SENT" | "OPENED" | "CLICKED" }) {
+  if (status === "CLICKED") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-800">
+        Clicked
+      </span>
+    );
+  }
+  if (status === "OPENED") {
+    return (
+      <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-800">
+        Opened
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs font-medium text-gray-600">
+      Sent
+    </span>
+  );
+}
 
 function ParticipantChip({ participant, state }: { participant: ParticipantSummary; state: "preferred" | "free" | "unavailable" }) {
   const color = state === "preferred"

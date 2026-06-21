@@ -101,6 +101,7 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
             email: true,
             name: true,
             responded: true,
+            emailStatus: true,
             createdAt: true
           },
           orderBy: { createdAt: "asc" }
@@ -244,13 +245,16 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     });
 
     const inviteUrl = new URL(`/join/${participant.token}`, env.WEB_URL).toString();
-    await sendInviteEmail(
+    const emailId = await sendInviteEmail(
       participant.email,
       participant.name ?? participant.email,
       event.title,
       event.organizer.name ?? event.organizer.email,
       inviteUrl
     );
+    if (emailId) {
+      await prisma.participant.update({ where: { id: participant.id }, data: { lastInviteEmailId: emailId } });
+    }
 
     return reply.code(201).send({ participant: redactParticipant(participant) });
   });
@@ -284,13 +288,16 @@ export async function eventRoutes(app: FastifyInstance): Promise<void> {
     });
 
     const inviteUrl = new URL(`/join/${participant.token}`, env.WEB_URL).toString();
-    await sendInviteEmail(
+    const resendEmailId = await sendInviteEmail(
       participant.email,
       participant.name ?? participant.email,
       event.title,
       event.organizer.name ?? event.organizer.email,
       inviteUrl
     );
+    if (resendEmailId) {
+      await prisma.participant.update({ where: { id: participant.id }, data: { lastInviteEmailId: resendEmailId, emailStatus: "SENT" } });
+    }
 
     return reply.send({ participant: redactParticipant(participant) });
   });
@@ -389,6 +396,7 @@ type ParticipantRecord = {
   email: string;
   name: string | null;
   responded: boolean;
+  emailStatus: string;
   createdAt: Date;
 };
 
@@ -425,6 +433,7 @@ function serializeOrganizerEvent(event: EventRecord & { participants: Participan
     ...serializeEvent(event),
     participants: event.participants.map((participant) => ({
       ...participant,
+      emailStatus: participant.emailStatus,
       createdAt: participant.createdAt.toISOString()
     })),
     suggestions: event.suggestions.map(serializeSuggestion)
