@@ -91,7 +91,7 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
 
     const participant = await prisma.participant.update({
       where: { token },
-      data: { availability: availability as Prisma.InputJsonValue, responded: hasPreferences(existing.preferences) }
+      data: { availability: availability as Prisma.InputJsonValue, responded: true }
     });
 
     await enqueueSuggestionRecompute(participant.eventId, source);
@@ -116,7 +116,7 @@ export async function participantRoutes(app: FastifyInstance): Promise<void> {
 
     const participant = await prisma.participant.update({
       where: { token },
-      data: { preferences: preferences as Prisma.InputJsonValue, responded: hasAvailability(existing.availability) }
+      data: { preferences: preferences as Prisma.InputJsonValue, responded: true }
     });
 
     await enqueueSuggestionRecompute(participant.eventId, "manual");
@@ -319,15 +319,6 @@ function serializePrivateParticipant(participant: ParticipantRecord) {
     createdAt: participant.createdAt.toISOString()
   };
 }
-
-function hasAvailability(value: Prisma.JsonValue): boolean {
-  return Array.isArray(value) && value.length > 0;
-}
-
-function hasPreferences(value: Prisma.JsonValue): boolean {
-  return Array.isArray(value) && value.length > 0;
-}
-
 
 function serializeSuggestion(suggestion: SuggestionRecord) {
   return {
