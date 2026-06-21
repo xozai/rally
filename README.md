@@ -264,6 +264,8 @@ Rally follows defence-in-depth practices:
 - **Resend webhook signature verification** — `POST /api/webhooks/resend` verifies Svix signatures (`svix-id`, `svix-timestamp`, `svix-signature`) before processing any payload; unsigned requests are rejected with `400`
 - **Constant-time OAuth HMAC comparison** — OAuth state signatures are compared with `crypto.timingSafeEqual` to prevent timing-based attacks
 - **Event expiry enforced on all participant endpoints** — both the availability and preferences submission endpoints check event-level expiry (in addition to per-invite expiry), returning `410 Gone` for expired rallies
+- **Dedicated ICS token key** — ICS download tokens are derived with `TOKEN_ENCRYPTION_KEY` via HMAC-SHA256, not `JWT_SECRET`, keeping session signing and token derivation keys isolated
+- **Atomic event deletion** — `onDelete: Cascade` on `Participant` and `Suggestion` relations ensures participants and suggestions are removed atomically with their parent event at the DB level, eliminating the risk of orphaned rows on process crash
 
 ---
 
