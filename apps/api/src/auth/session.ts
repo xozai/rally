@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { jwtVerify, SignJWT } from "jose";
+import { importPKCS8, importSPKI, jwtVerify, SignJWT } from "jose";
 import { env } from "../env";
 import { redis } from "../lib/redis";
 
@@ -12,7 +12,46 @@ export interface SessionClaims {
   email: string;
 }
 
+// ---------------------------------------------------------------------------
+// ES256 key helpers (#28)
+// Keys are loaded once at startup and cached for the lifetime of the process.
+// ---------------------------------------------------------------------------
+
+let _privateKeyPromise: ReturnType<typeof importPKCS8> | undefined;
+let _publicKeyPromise: ReturnType<typeof importSPKI> | undefined;
+
+function getPrivateKey() {
+  if (!env.ES256_PRIVATE_KEY) return undefined;
+  if (!_privateKeyPromise) {
+    _privateKeyPromise = importPKCS8(env.ES256_PRIVATE_KEY, "ES256");
+  }
+  return _privateKeyPromise;
+}
+
+function getPublicKey() {
+  if (!env.ES256_PUBLIC_KEY) return undefined;
+  if (!_publicKeyPromise) {
+    _publicKeyPromise = importSPKI(env.ES256_PUBLIC_KEY, "ES256");
+  }
+  return _publicKeyPromise;
+}
+
+/** Returns true when both asymmetric key env vars are configured. */
+function useES256(): boolean {
+  return Boolean(env.ES256_PRIVATE_KEY && env.ES256_PUBLIC_KEY);
+}
+
 export async function createSessionToken(claims: SessionClaims): Promise<string> {
+  if (useES256()) {
+    const privateKey = await getPrivateKey()!;
+    return new SignJWT({ email: claims.email })
+      .setProtectedHeader({ alg: "ES256" })
+      .setSubject(claims.userId)
+      .setIssuedAt()
+      .setExpirationTime("30d")
+      .sign(privateKey!);
+  }
+
   return new SignJWT({ email: claims.email })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(claims.userId)
@@ -22,6 +61,16 @@ export async function createSessionToken(claims: SessionClaims): Promise<string>
 }
 
 export async function createMagicLinkToken(email: string): Promise<string> {
+  if (useES256()) {
+    const privateKey = await getPrivateKey()!;
+    return new SignJWT({ email, purpose: "magic_link" })
+      .setProtectedHeader({ alg: "ES256" })
+      .setJti(randomUUID())
+      .setIssuedAt()
+      .setExpirationTime("15m")
+      .sign(privateKey!);
+  }
+
   return new SignJWT({ email, purpose: "magic_link" })
     .setProtectedHeader({ alg: "HS256" })
     .setJti(randomUUID()) // unique jti so we can blacklist after first use (#17)
@@ -31,7 +80,20 @@ export async function createMagicLinkToken(email: string): Promise<string> {
 }
 
 export async function verifyMagicLinkToken(token: string): Promise<string> {
-  const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+  // Try ES256 first when a public key is present; fall back to HS256 for
+  // tokens issued before the key was rotated in.
+  const publicKey = getPublicKey() ? await getPublicKey() : undefined;
+  let payload;
+  if (publicKey) {
+    try {
+      ({ payload } = await jwtVerify(token, publicKey, { algorithms: ["ES256"] }));
+    } catch {
+      ({ payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] }));
+    }
+  } else {
+    ({ payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] }));
+  }
+
   if (payload.purpose !== "magic_link" || typeof payload.email !== "string") {
     throw new Error("Invalid magic link token");
   }
@@ -65,7 +127,20 @@ export async function getSession(request: FastifyRequest): Promise<SessionClaims
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    // Try ES256 first when a public key is present; fall back to HS256 for
+    // tokens issued before asymmetric signing was enabled.
+    const publicKey = getPublicKey() ? await getPublicKey() : undefined;
+    let payload;
+    if (publicKey) {
+      try {
+        ({ payload } = await jwtVerify(token, publicKey, { algorithms: ["ES256"] }));
+      } catch {
+        ({ payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] }));
+      }
+    } else {
+      ({ payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] }));
+    }
+
     if (!payload.sub || typeof payload.email !== "string") return null;
     return { userId: payload.sub, email: payload.email };
   } catch {
