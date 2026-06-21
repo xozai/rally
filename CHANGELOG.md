@@ -1,5 +1,27 @@
 # Changelog
 
+## [1.1.0](https://github.com/xozai/rally/compare/v1.0.0...v1.1.0) (2026-06-21)
+
+
+### Features
+
+* **email:** add open/click tracking for invite emails via Resend webhooks ([#67](https://github.com/xozai/rally/issues/67)) ([a3ace41](https://github.com/xozai/rally/commit/a3ace4174dd8952ca373fe83b1ede53bc63c29e7))
+* **security:** add opt-in ES256 asymmetric JWT signing ([#65](https://github.com/xozai/rally/issues/65)) ([75f25c3](https://github.com/xozai/rally/commit/75f25c3da635840676b2fb39935215901e8a73bb))
+* **web:** add public event status page ([#69](https://github.com/xozai/rally/issues/69)) ([f45de20](https://github.com/xozai/rally/commit/f45de2059b21693cc94806e221e4dce229562f2e))
+
+
+### Bug Fixes
+
+* **api:** add runtime Zod validation for JSON columns (availability, preferences, constraints) ([#59](https://github.com/xozai/rally/issues/59)) ([30968f6](https://github.com/xozai/rally/commit/30968f6e3454ee3d75fdfb3cb448ebf6639e2a38))
+* **auth:** add per-email Redis rate limit on magic-link endpoint ([#56](https://github.com/xozai/rally/issues/56)) ([4b00c46](https://github.com/xozai/rally/commit/4b00c46ba3c637e23a2fc095961171d02fae1b4b))
+* **events:** respect sendInvites flag in confirm endpoint ([#54](https://github.com/xozai/rally/issues/54)) ([ee635f5](https://github.com/xozai/rally/commit/ee635f5629e62e912c509914252131cdb8957dcc))
+* **security:** add expiry to participant invite tokens ([#60](https://github.com/xozai/rally/issues/60)) ([d0b365c](https://github.com/xozai/rally/commit/d0b365c3fd702b6fc87cbd8b7c4fc2d1d372845e)), closes [#27](https://github.com/xozai/rally/issues/27)
+* **security:** pin JWT algorithm and replace SHA-256 KDF with HKDF ([#55](https://github.com/xozai/rally/issues/55)) ([952b73c](https://github.com/xozai/rally/commit/952b73c5984eb30dbe6b7532bd06745789107a13))
+* **security:** protect ICS endpoint with HMAC-signed download token ([#58](https://github.com/xozai/rally/issues/58)) ([3fb9161](https://github.com/xozai/rally/commit/3fb9161f458db2363bd5a9d7c785c42030bddbd1))
+* **security:** redact raw OAuth error responses from logs ([#57](https://github.com/xozai/rally/issues/57)) ([a8bf8e2](https://github.com/xozai/rally/commit/a8bf8e26a06e2a0ecd694674b8979123c19e2597))
+* **shared:** add standalone eslintrc to avoid inheriting next/core-web-vitals from root ([#66](https://github.com/xozai/rally/issues/66)) ([8903fbc](https://github.com/xozai/rally/commit/8903fbcf9c3f18ad51b64666f3c82890aaae2683))
+* **types:** align EventConstraints interface with actual stored JSON schema ([#62](https://github.com/xozai/rally/issues/62)) ([bd9ae17](https://github.com/xozai/rally/commit/bd9ae1730079b36ea8726f24b797d9e67a3c6a47))
+
 ## 1.0.0 (2026-06-16)
 
 
